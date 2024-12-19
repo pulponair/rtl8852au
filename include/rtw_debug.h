@@ -17,13 +17,13 @@
 
 /* driver log level*/
 enum {
-	_DRV_NONE_,
-	_DRV_ERR_,
-	_DRV_WARNING_,
-	_DRV_INFO_,
-	_DRV_DEBUG_,
-	_DRV_ALWAYS_,
-	_DRV_MAX_
+	_DRV_NONE_ = 0,
+	_DRV_ALWAYS_ = 1,
+	_DRV_ERR_ = 2,
+	_DRV_WARNING_ = 3,
+	_DRV_INFO_ = 4,
+	_DRV_DEBUG_ = 5,
+	_DRV_MAX_ = 6
 };
 
 #define DRIVER_PREFIX "RTW: "
@@ -100,9 +100,6 @@ extern uint rtw_drv_log_level;
 /* Extra information in prefix */
 #define EX_INFO_FMT	T_PID_FMT CPU_INFO_FMT
 #define EX_INFO_ARG	T_PID_ARG, CPU_INFO_ARG
-#else /* !PLATFORM_LINUX */
-#define EX_INFO_FMT	"%s"
-#define EX_INFO_ARG	""
 
 #define DBG_PREFIX	EX_INFO_FMT DRIVER_PREFIX
 #define DBG_PREFIX_ARG	EX_INFO_ARG
