@@ -41,6 +41,7 @@
 #define STATION_INFO_NONPEER_PM		BIT(NL80211_STA_INFO_NONPEER_PM)
 #define STATION_INFO_RX_BYTES64		BIT(NL80211_STA_INFO_RX_BYTES64)
 #define STATION_INFO_TX_BYTES64		BIT(NL80211_STA_INFO_TX_BYTES64)
+#define	STATION_INFO_CONNECTED_TIME BIT(NL80211_STA_INFO_CONNECTED_TIME)
 #define STATION_INFO_ASSOC_REQ_IES	0
 #endif /* Linux kernel >= 4.0.0 */
 
@@ -2620,7 +2621,12 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 		sinfo->rx_bytes = psta->sta_stats.rx_bytes;
 		sinfo->tx_bytes = psta->sta_stats.tx_bytes;
 
-
+		if (psta->connect_time) {
+    		sinfo->connected_time = ktime_get_boottime_seconds() - psta->connect_time;
+		} else {
+    		sinfo->connected_time = 0; // Keine Verbindung
+		}
+		sinfo->filled |= STATION_INFO_CONNECTED_TIME;
 
 		
 		sinfo->filled |= STATION_INFO_TX_FAILED;
