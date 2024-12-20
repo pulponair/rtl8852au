@@ -9658,6 +9658,8 @@ void update_sta_info(_adapter *padapter, struct sta_info *psta)
 
 	_rtw_spinlock_bh(&psta->lock);
 	psta->state = WIFI_ASOC_STATE;
+
+	psta->connect_time = ktime_get_boottime_seconds();
 	_rtw_spinunlock_bh(&psta->lock);
 
 }

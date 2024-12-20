@@ -296,6 +296,7 @@ struct sta_info {
 	uint state;
 	uint qos_option;
 	u16 hwseq;
+	u64 connect_time; 
 
 #ifdef CONFIG_RTW_80211K
 	u8 rm_en_cap[5];
