@@ -2,6 +2,7 @@
 #include <usb.h>
 #include <rtl8852au.h>
 #include <mac80211.h>
+#include <logging.h>
 
 static const struct usb_device_id rtl8852au_table[] = {    
     { USB_DEVICE(0x2357, 0x013f) }, //TP-Link 802.11ac WLAN Adapter
@@ -16,7 +17,7 @@ static int rtl8852au_probe(struct usb_interface *interface, const struct usb_dev
 	struct rtl8852au_usb *usb;
     struct usb_device *device = interface_to_usbdev(interface);
 
-    pr_info("rtl8852au USB device connected\n");
+    RTL8852AU_INFO("USB device connected\n");
 
     usb = kzalloc(sizeof(*usb), GFP_KERNEL);
     if (!usb) {
@@ -36,7 +37,7 @@ static int rtl8852au_probe(struct usb_interface *interface, const struct usb_dev
 
 static void rtl8852au_disconnect(struct usb_interface *intf)
 {
-    pr_info("rtl8852au USB device disconnected\n");
+    RTL8852AU_INFO("USB device disconnected\n");
 }
 
 static struct usb_driver rtl8852au_usb_driver = {

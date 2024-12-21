@@ -1,16 +1,17 @@
 #include <linux/module.h>
 #include "usb.h"
+#include "logging.h"
 
 static int __init rtl8852au_init(void)
 {
     int ret;
 
-    pr_info("Initializing rtl8852au driver\n");
+    RTL8852AU_INFO("Initializing driver\n");
 
     /* Init  USB */
     ret = rtl8852au_usb_init();
     if (ret) {
-        pr_err("Failed to initialize USB\n");
+        RTL8852AU_ERR("Failed to initialize USB\n");
         return ret;
     }
 
@@ -20,7 +21,7 @@ static int __init rtl8852au_init(void)
 static void __exit rtl8852au_exit(void)
 {
     rtl8852au_usb_exit();
-    pr_info("rtl8852au driver unloaded\n");
+    RTL8852AU_INFO("driver unloaded\n");
 }
 
 module_init(rtl8852au_init);
