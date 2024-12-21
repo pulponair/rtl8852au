@@ -1,0 +1,5 @@
+config RTL8852AU
+    tristate "Realtek RTL8852AU Wireless Driver (mac80211)"
+    depends on MAC80211
+    help
+      Enable support for the Realtek RTL8852AU chip using the mac80211 framework.
