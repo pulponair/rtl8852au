@@ -1,84 +1,63 @@
+#include "mac80211.h"
+#include "logging.h"    
 #include <net/mac80211.h>
-#include <rtl8852au.h>
-
 #include <linux/ieee80211.h>
-#include <linux/kernel.h>
-#include <linux/printk.h>
-#include <mac80211.h>
-#include <logging.h>
-
-static int rtl8852au_start(struct ieee80211_hw *hw) {
-    RTL8852AU_INFO("start called\n");
-    return 0;
-}
-
-static void rtl8852au_stop(struct ieee80211_hw *hw) {
-    RTL8852AU_INFO("stop called\n");
-}
-
-
-static int rtl8852au_config(struct ieee80211_hw *hw, u32 changed) {
-    RTL8852AU_INFO("config called\n");
-    return 0;
-}
-
-static int rtl8852au_add_interface(struct ieee80211_hw *hw,
-                                   struct ieee80211_vif *vif) {
-    RTL8852AU_INFO("add_interface called\n");
-    return 0;
-}
-
-static void rtl8852au_remove_interface(struct ieee80211_hw *hw,
-                                       struct ieee80211_vif *vif) {
-    RTL8852AU_INFO("remove_interface called\n");
-}
-
-static void rtl8852au_configure_filter(struct ieee80211_hw *hw,
-                                       unsigned int changed_flags,
-                                       unsigned int *total_flags,
-                                       u64 multicast) {
-    RTL8852AU_INFO("configure_filter called\n");
-}
-
-static void rtl8852au_wake_tx_queue(struct ieee80211_hw *hw,
-                                    struct ieee80211_txq *txq) {
-    RTL8852AU_INFO("wake_tx_queue called\n");
-}
-
+#include <linux/usb.h>
 
 static void rtl8852au_tx(struct ieee80211_hw *hw,
-                         struct ieee80211_tx_control *control,
-                         struct sk_buff *skb) {
-
-    RTL8852AU_INFO("tx called\n");
-    dev_kfree_skb(skb); 
+                        struct ieee80211_tx_control *control,
+                        struct sk_buff *skb)
+{
+    // Dummy implementation
+    dev_kfree_skb_any(skb);
 }
 
-
-static int rtl8852au_sta_state(struct ieee80211_hw *hw,
-                               struct ieee80211_vif *vif,
-                               struct ieee80211_sta *sta,
-                               enum ieee80211_sta_state old_state,
-                               enum ieee80211_sta_state new_state) {
-
-    RTL8852AU_INFO("sta_state called: %d -> %d\n", old_state, new_state);
+static int rtl8852au_start(struct ieee80211_hw *hw)
+{
+    // Dummy implementation
     return 0;
 }
 
+static void rtl8852au_stop(struct ieee80211_hw *hw)
+{
+    // Dummy implementation
+}
+
+static int rtl8852au_config(struct ieee80211_hw *hw, u32 changed)
+{
+    // Dummy implementation
+    return 0;
+}
 
 static const struct ieee80211_ops rtl8852au_ops = {
+    .tx = rtl8852au_tx,
     .start = rtl8852au_start,
     .stop = rtl8852au_stop,
     .config = rtl8852au_config,
-    .add_interface = rtl8852au_add_interface,
-    .remove_interface = rtl8852au_remove_interface,
-    .configure_filter = rtl8852au_configure_filter,
-    .wake_tx_queue = rtl8852au_wake_tx_queue,
-    .tx = rtl8852au_tx,
-    .sta_state = rtl8852au_sta_state, /* Optional */
 };
 
-struct ieee80211_hw *rtl8852au_mac80211_alloc(struct rtl8852au_usb *usb) {
+// 2.4GHz band definition
+static struct ieee80211_channel rtl8852au_2ghz_channels[] = {
+    { .center_freq = 2412, .hw_value = 1, },  // Channel 1
+    { .center_freq = 2417, .hw_value = 2, },  // Channel 2
+    // Add more channels as needed
+};
+
+static struct ieee80211_rate rtl8852au_rates[] = {
+    { .bitrate = 10, .hw_value = 0x1, },    // 1Mbps
+    { .bitrate = 20, .hw_value = 0x2, },    // 2Mbps
+    // Add more rates as needed
+};
+
+static struct ieee80211_supported_band rtl8852au_band_2ghz = {
+    .channels = rtl8852au_2ghz_channels,
+    .n_channels = ARRAY_SIZE(rtl8852au_2ghz_channels),
+    .bitrates = rtl8852au_rates,
+    .n_bitrates = ARRAY_SIZE(rtl8852au_rates),
+};
+
+struct ieee80211_hw *rtl8852au_mac80211_alloc(struct rtl8852au_usb *usb)
+{
     struct ieee80211_hw *hw;
     struct rtl8852au_priv *priv;
 
@@ -88,16 +67,62 @@ struct ieee80211_hw *rtl8852au_mac80211_alloc(struct rtl8852au_usb *usb) {
         return NULL;
     }
 
-    RTL8852AU_INFO("ieee80211_hw allocated");
-
     priv = hw->priv;
     priv->hw = hw;
     priv->usb = usb;
+    
+    spin_lock_init(&priv->locks);
 
+    // Set device capabilities correctly
+    SET_IEEE80211_DEV(hw, &priv->usb->interface->dev);
+
+    // Set hardware flags
+    ieee80211_hw_set(hw, SIGNAL_DBM);
+    ieee80211_hw_set(hw, RX_INCLUDES_FCS);
+
+    // Set interface modes and queues
+    hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION);
+    hw->queues = 4;
+
+    // Set antenna config through wiphy's available antennas
+    hw->wiphy->available_antennas_tx = BIT(0);
+    hw->wiphy->available_antennas_rx = BIT(0);
+
+    RTL8852AU_INFO("ieee80211_hw allocated\n");
     return hw;
 }
 
-void rtl8852au_mac80211_free(struct ieee80211_hw *hw) {
-    ieee80211_unregister_hw(hw);
-    ieee80211_free_hw(hw);
+int rtl8852au_mac80211_register(struct ieee80211_hw *hw)
+{
+    int ret;
+    struct rtl8852au_priv *priv = hw->priv;
+    
+    // Add 2.4GHz band support
+    hw->wiphy->bands[NL80211_BAND_2GHZ] = &rtl8852au_band_2ghz;
+    
+    SET_IEEE80211_DEV(hw, &priv->usb->interface->dev);
+    
+    // Set MAC address
+    eth_random_addr(hw->wiphy->perm_addr);
+
+    ret = ieee80211_register_hw(hw);
+    if (ret) {
+        pr_err("Failed to register ieee80211_hw\n");
+        return ret;
+    }
+
+    RTL8852AU_INFO("MAC80211 hardware registered\n");
+    return 0;
+}
+
+void rtl8852au_mac80211_unregister(struct ieee80211_hw *hw)
+{
+    if (hw)
+        ieee80211_unregister_hw(hw);
+}
+
+void rtl8852au_mac80211_free(struct ieee80211_hw *hw)
+{
+    if (hw)
+        ieee80211_free_hw(hw);
 }

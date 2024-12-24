@@ -5,6 +5,8 @@
 #include <rtl8852au.h>
 
 struct ieee80211_hw *rtl8852au_mac80211_alloc(struct rtl8852au_usb *usb);
+int rtl8852au_mac80211_register(struct ieee80211_hw *hw);
+void rtl8852au_mac80211_unregister(struct ieee80211_hw *hw);
 void rtl8852au_mac80211_free(struct ieee80211_hw *hw);
 
 #endif 

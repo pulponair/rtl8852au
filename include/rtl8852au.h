@@ -10,6 +10,7 @@ struct rtl8852au_usb {
 
 struct rtl8852au_priv {
     struct ieee80211_hw *hw;
-    struct rtl8852au_usb *usb;    
+    struct rtl8852au_usb *usb; 
+    spinlock_t locks;     
 };
 #endif 
