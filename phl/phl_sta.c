@@ -1963,6 +1963,25 @@ rtw_phl_query_rainfo(void *phl, struct rtw_phl_stainfo_t *phl_sta,
 	return phl_sts;
 }
 
+enum rtw_phl_status
+rtw_phl_get_rx_stat(void *phl, struct rtw_phl_stainfo_t *phl_sta,
+		     u16 *rx_rate, u8 *bw, u8 *gi_ltf)
+{
+	enum rtw_phl_status phl_sts = RTW_PHL_STATUS_FAILURE;
+	struct rtw_hal_stainfo_t *hal_sta;
+
+	if(phl_sta) {
+		hal_sta = phl_sta->hal_sta;
+		*rx_rate = hal_sta->trx_stat.rx_rate;
+		*gi_ltf = hal_sta->trx_stat.rx_gi_ltf;
+		*bw = hal_sta->trx_stat.rx_bw;
+		phl_sts = RTW_PHL_STATUS_SUCCESS;
+	}
+
+	return phl_sts;
+}
+
+
 /**
  * rtw_phl_txsts_rpt_config() - issue h2c for txok and tx retry info
  * @phl:		struct phl_info_t *

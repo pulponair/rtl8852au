@@ -169,6 +169,11 @@ enum rtw_phl_status
 rtw_phl_query_rainfo(void *phl, struct rtw_phl_stainfo_t *phl_sta,
 		     struct rtw_phl_rainfo *ra_info);
 
+
+enum rtw_phl_status
+rtw_phl_get_rx_stat(void *phl, struct rtw_phl_stainfo_t *phl_sta,
+			u16 *rx_rate, u8 *bw, u8 *gi_ltf);
+
 void rtw_phl_sta_up_rx_bcn(void *phl, struct rtw_bcn_pkt_info *info);
 
 /*macid management section, temporary for debuge*/

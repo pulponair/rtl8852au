@@ -2803,6 +2803,323 @@ _adapter *dvobj_get_adapter_by_addr(struct dvobj_priv *dvobj, u8 *addr)
 	return adapter;
 }
 
+static u32 rtw_get_he_bitrate(u8 mcs, u8 bw, u8 nss, u8 sgi)
+{
+	static const u32 base[4][3][12] = { /*[bw][GI][MCS] */
+		/* BW20 */
+		{{   8600000,  17200000,  25800000,  34400000, /* GI 0.8u */
+		    51600000,  68800000,  77400000,  86000000,
+		   103200000, 114700000, 129000000, 143400000,
+		},
+		{    8100000,  16300000,  24400000,  32500000, /* GI 1.6u */
+		    48800000,  65000000,  73100000,  81300000,
+		    97500000, 108300000, 121900000, 135400000,
+		},
+		{    7300000,  14600000,  21900000,  29300000, /* GI 3.2u */
+		    43900000,  58500000,  65800000,  73100000,
+		    87800000,  97500000, 109700000, 121900000,
+		}},
+		/* BW40 */
+		{{  17200000,  34400000,  51600000,  68800000, /* GI 0.8u */
+		   103200000, 137600000, 154900000, 172100000,
+		   206500000, 229400000, 258100000, 286800000,
+		},
+		{   16300000,  32500000,  48800000,  65000000, /* GI 1.6u */
+		    97500000, 130000000, 146300000, 162500000,
+		   195000000, 216700000, 243800000, 270800000,
+		},
+		{   14600000,  29300000,  43900000,  58500000, /* GI 3.2u */
+		    87800000, 117000000, 131600000, 146300000,
+		   175500000, 195000000, 219400000, 243800000,
+		}},
+		/* BW80 */
+		{{  36000000,  72100000, 108100000, 144100000, /* GI 0.8u */
+		   216200000, 288200000, 324300000, 360300000,
+		   432400000, 480400000, 540400000, 600500000,
+		},
+		{   34000000,  68100000, 102100000, 136100000, /* GI 1.6u */
+		   204200000, 272200000, 306300000, 340300000,
+		   408300000, 453700000, 510400000, 567100000,
+		},
+		{   30600000,  61300000,  91900000, 122500000, /* GI 3.2u */
+		   183800000, 245000000, 275600000, 306300000,
+		   367500000, 408300000, 459400000, 510400000,
+		}},
+		/* BW160 and BW80+80 */
+		{{  72100000, 144100000, 216200000, 288200000, /* GI 0.8u */
+		   432400000, 576500000, 648500000, 720600000,
+		   864700000, 960800000,1080900000,1201000000,
+		},
+		{   68100000, 136100000, 204200000, 272200000, /* GI 1.6u */
+		   408300000, 544400000, 612500000, 680600000,
+		   816700000, 907400000,1020800000,1134300000,
+		},
+		{   61300000, 122500000, 183800000, 245000000, /* GI 3.2u */
+		   367500000, 490000000, 551300000, 612500000,
+		   735000000, 816700000, 918800000,1020800000,
+		}}
+	};
+	u32 bitrate;
+	int bw_idx, sgi_idx;
+
+	if (mcs > 11) {
+		RTW_INFO("Invalid mcs = %d\n", mcs);
+		return 0;
+	}
+
+	if (nss > 4 || nss < 1) {
+		RTW_INFO("Now only support nss = 1, 2, 3, 4\n");
+		return 0;
+	}
+
+	switch (bw) {
+	case CHANNEL_WIDTH_80_80:
+	case CHANNEL_WIDTH_160:
+		bw_idx = 3;
+		break;
+	case CHANNEL_WIDTH_80:
+		bw_idx = 2;
+		break;
+	case CHANNEL_WIDTH_40:
+		bw_idx = 1;
+		break;
+	case CHANNEL_WIDTH_20:
+		bw_idx = 0;
+		break;
+	default:
+		RTW_INFO("bw = %d currently not supported\n", bw);
+		return 0;
+	}
+
+	/* refer to mdata.rx_gi_ltf */
+	switch (sgi) {
+	case RTW_GILTF_LGI_4XHE32:
+		sgi_idx = 2; /* 3.2 GI */
+		break;
+	case RTW_GILTF_2XHE16:
+	case RTW_GILTF_1XHE16:
+		sgi_idx = 1; /* 1.6 GI */
+		break;
+	case RTW_GILTF_SGI_4XHE08:
+	case RTW_GILTF_2XHE08:
+	case RTW_GILTF_1XHE08:
+		sgi_idx = 0; /* 0.8 GI */
+		break;
+	default:
+		RTW_INFO("gi_ltf = %d currently not supported\n", sgi);
+		return 0;
+	}
+	bitrate = base[bw_idx][sgi_idx][mcs];
+	bitrate *= nss;
+	return (bitrate/100000);
+}
+
+static u32 rtw_get_vht_bitrate(u8 mcs, u8 bw, u8 nss, u8 sgi)
+{
+	static const u32 base[4][10] = {
+		{   6500000,
+		   13000000,
+		   19500000,
+		   26000000,
+		   39000000,
+		   52000000,
+		   58500000,
+		   65000000,
+		   78000000,
+		/* not in the spec, but some devices use this: */
+		   86500000,
+		},
+		{  13500000,
+		   27000000,
+		   40500000,
+		   54000000,
+		   81000000,
+		  108000000,
+		  121500000,
+		  135000000,
+		  162000000,
+		  180000000,
+		},
+		{  29300000,
+		   58500000,
+		   87800000,
+		  117000000,
+		  175500000,
+		  234000000,
+		  263300000,
+		  292500000,
+		  351000000,
+		  390000000,
+		},
+		{  58500000,
+		  117000000,
+		  175500000,
+		  234000000,
+		  351000000,
+		  468000000,
+		  526500000,
+		  585000000,
+		  702000000,
+		  780000000,
+		},
+	};
+	u32 bitrate;
+	int bw_idx;
+
+	if (mcs > 9) {
+		RTW_INFO("Invalid mcs = %d\n", mcs);
+		return 0;
+	}
+
+	if (nss > 4 || nss < 1) {
+		RTW_INFO("Now only support nss = 1, 2, 3, 4\n");
+	}
+
+	switch (bw) {
+	case CHANNEL_WIDTH_160:
+		bw_idx = 3;
+		break;
+	case CHANNEL_WIDTH_80:
+		bw_idx = 2;
+		break;
+	case CHANNEL_WIDTH_40:
+		bw_idx = 1;
+		break;
+	case CHANNEL_WIDTH_20:
+		bw_idx = 0;
+		break;
+	default:
+		RTW_INFO("bw = %d currently not supported\n", bw);
+		return 0;
+	}
+
+	bitrate = base[bw_idx][mcs];
+	bitrate *= nss;
+
+	if (sgi)
+		bitrate = (bitrate / 9) * 10;
+
+	/* do NOT round down here */
+	return (bitrate + 50000) / 100000;
+}
+
+static u32 rtw_get_ht_bitrate(u8 mcs, u8 bw, u8 sgi)
+{
+	int modulation, streams, bitrate;
+
+	/* the formula below does only work for MCS values smaller than 32 */
+	if (mcs >= 32) {
+		RTW_INFO("Invalid mcs = %d\n", mcs);
+		return 0;
+	}
+
+	if (bw > 1) {
+		RTW_INFO("Now HT only support bw = 0(20Mhz), 1(40Mhz)\n");
+		return 0;
+	}
+
+	modulation = mcs & 7;
+	streams = (mcs >> 3) + 1;
+
+	bitrate = (bw == 1) ? 13500000 : 6500000;
+
+	if (modulation < 4)
+		bitrate *= (modulation + 1);
+	else if (modulation == 4)
+		bitrate *= (modulation + 2);
+	else
+		bitrate *= (modulation + 3);
+
+	bitrate *= streams;
+
+	if (sgi)
+		bitrate = (bitrate / 9) * 10;
+
+	/* do NOT round down here */
+	return (bitrate + 50000) / 100000;
+}
+
+
+
+u32 rtw_desc_rate_to_bitrate(u8 bw, u16 data_rate, u8 sgi)
+{
+	u32 bitrate = DESC_RATE1M;
+
+	if (data_rate <= DESC_RATE54M){
+		u16 ofdm_rate[12] = {10, 20, 55, 110,
+			60, 90, 120, 180, 240, 360, 480, 540};
+		bitrate = ofdm_rate[data_rate];
+	} else if ((RTW_DATA_RATE_MCS0 <= data_rate) &&
+		   (data_rate <= RTW_DATA_RATE_MCS31)) {
+		u8 mcs = data_rate - RTW_DATA_RATE_MCS0;
+		bitrate = rtw_get_ht_bitrate(mcs, bw, sgi);
+	} else if ((RTW_DATA_RATE_VHT_NSS1_MCS0 <= data_rate) &&
+		   (data_rate <= RTW_DATA_RATE_VHT_NSS4_MCS9)) {
+		u8 mcs = data_rate & 0xF;
+		u8 nss  = ((data_rate - RTW_DATA_RATE_VHT_NSS1_MCS0) >> 4) + 1;
+		bitrate = rtw_get_vht_bitrate(mcs, bw, nss, sgi);
+	} else if ((RTW_DATA_RATE_HE_NSS1_MCS0 <= data_rate) &&
+		   (data_rate <= RTW_DATA_RATE_HE_NSS4_MCS11)) {
+		u8 mcs = data_rate & 0xF;
+		u8 nss  = ((data_rate - RTW_DATA_RATE_HE_NSS1_MCS0) >> 4) + 1;
+		bitrate = rtw_get_he_bitrate(mcs, bw, nss, sgi);
+	} else {
+		/* 60Ghz ??? */
+		bitrate = 1;
+	}
+
+	return bitrate;
+}
+
+u16 rtw_get_current_tx_rate(_adapter *adapter, struct sta_info *psta)
+{
+	u16 rate_id = 0;
+	struct rtw_phl_rainfo ra_info;
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	if (!psta)
+		return rate_id;
+
+	if (adapter->fix_rate != NO_FIX_RATE)
+		rate_id = GET_FIX_RATE(adapter->fix_rate);
+	else {
+		rtw_phl_query_rainfo(dvobj->phl, psta->phl_sta, &ra_info);
+		rate_id = ra_info.rate; /* enum rtw_data_rate */
+	}
+
+	return rate_id;
+}
+
+u8 rtw_get_current_tx_sgi(_adapter *adapter, struct sta_info *psta)
+{
+	u8 curr_tx_sgi = 0;
+	struct rtw_phl_rainfo ra_info;
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	if (!psta)
+		return curr_tx_sgi;
+
+	if (adapter->fix_rate != NO_FIX_RATE)
+		/* fix rate */
+		curr_tx_sgi = GET_FIX_RATE_SGI(adapter->fix_rate);
+	else {
+		rtw_phl_query_rainfo(dvobj->phl, psta->phl_sta, &ra_info);
+		curr_tx_sgi = ra_info.gi_ltf;
+	}
+
+	return curr_tx_sgi;
+}
+void rtw_get_current_rx_info(_adapter *adapter, struct sta_info *psta,
+	u16 *rate, u8 *bw, u8 *gi_ltf)
+{
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	if (!psta)
+		return;
+
+	rtw_phl_get_rx_stat(dvobj->phl, psta->phl_sta, rate, bw, gi_ltf);
+}
+
 #ifdef CONFIG_RTW_MULTI_AP
 u8 rtw_get_ch_utilization(_adapter *adapter)
 {
