@@ -36,6 +36,7 @@
 #define STATION_INFO_RX_PACKETS		BIT(NL80211_STA_INFO_RX_PACKETS)
 #define STATION_INFO_TX_PACKETS		BIT(NL80211_STA_INFO_TX_PACKETS)
 #define STATION_INFO_TX_FAILED		BIT(NL80211_STA_INFO_TX_FAILED)
+#define STATION_INFO_RX_BITRATE		BIT(NL80211_STA_INFO_RX_BITRATE)
 #define STATION_INFO_LOCAL_PM		BIT(NL80211_STA_INFO_LOCAL_PM)
 #define STATION_INFO_PEER_PM		BIT(NL80211_STA_INFO_PEER_PM)
 #define STATION_INFO_NONPEER_PM		BIT(NL80211_STA_INFO_NONPEER_PM)
@@ -2526,6 +2527,114 @@ static void rtw_cfg80211_fill_mesh_only_sta_info(struct mesh_plink_ent *plink, s
 }
 #endif /* CONFIG_RTW_MESH */
 
+
+static void rtw_desc_rate_to_nss_mcs(u16 rate_idx, u8 *rate_mode, u8 *nss, u8 *mcs)
+{
+	u8 mcs_in = 0, nss_in = 0;
+
+	/* enum rtw_data_rate */
+	if ((RTW_DATA_RATE_MCS0 <= rate_idx) &&
+	   (rate_idx <= RTW_DATA_RATE_MCS31)) {
+		*rate_mode = RTW_HT_MODE;
+		mcs_in = rate_idx - RTW_DATA_RATE_MCS0;
+	} else if ((RTW_DATA_RATE_VHT_NSS1_MCS0 <= rate_idx) &&
+		   (rate_idx <= RTW_DATA_RATE_VHT_NSS4_MCS9)) {
+		*rate_mode = RTW_VHT_MODE;
+		mcs_in = rate_idx & 0xF;
+		nss_in = ((rate_idx - RTW_DATA_RATE_VHT_NSS1_MCS0) >> 4) + 1;
+	} else if ((RTW_DATA_RATE_HE_NSS1_MCS0 <= rate_idx) &&
+		   (rate_idx <= RTW_DATA_RATE_HE_NSS4_MCS11)) {
+		*rate_mode = RTW_HE_MODE;
+		mcs_in = rate_idx & 0xF;
+		nss_in = ((rate_idx - RTW_DATA_RATE_HE_NSS1_MCS0) >> 4) + 1;
+	} else {
+		*rate_mode = RTW_LEGACY_MODE;
+	}
+
+	if (nss)
+		*nss = nss_in;
+	if (mcs)
+		*mcs = mcs_in;
+}
+
+
+static void sta_set_rate_info(_adapter *adapter, struct rate_info *rinfo,
+			      u16 rtw_rate_idx, u8 sgi, u8 bw)
+{
+	u8 mcs = 0;
+	u8 nss = 0;
+	u8 mod = 0;
+
+	rinfo->flags = 0;
+	rtw_desc_rate_to_nss_mcs(rtw_rate_idx, &mod, &nss, &mcs);
+
+	if (sgi)
+		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+	if (mod == RTW_HE_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_HE_MCS;
+		rinfo->bw = bw == CHANNEL_WIDTH_160 ? RATE_INFO_BW_160 :
+			    bw == CHANNEL_WIDTH_80 ? RATE_INFO_BW_80 :
+			    bw == CHANNEL_WIDTH_40 ? RATE_INFO_BW_40 : RATE_INFO_BW_20;
+		rinfo->nss = nss;
+		rinfo->mcs = mcs;
+	} else if (mod == RTW_VHT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_VHT_MCS;
+		rinfo->bw = bw == CHANNEL_WIDTH_160 ? RATE_INFO_BW_160 :
+			    bw == CHANNEL_WIDTH_80 ? RATE_INFO_BW_80 :
+			    bw == CHANNEL_WIDTH_40 ? RATE_INFO_BW_40 : RATE_INFO_BW_20;
+		rinfo->nss = nss;
+		rinfo->mcs = mcs;
+	} else if (mod == RTW_HT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_MCS;
+		rinfo->bw = bw ? RATE_INFO_BW_40 : RATE_INFO_BW_20;
+		rinfo->mcs = mcs;
+	}
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+	if (mod == RTW_VHT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_VHT_MCS;
+		rinfo->bw = bw == CHANNEL_WIDTH_160 ? RATE_INFO_BW_160 :
+			    bw == CHANNEL_WIDTH_80 ? RATE_INFO_BW_80 :
+			    bw == CHANNEL_WIDTH_40 ? RATE_INFO_BW_40 : RATE_INFO_BW_20;
+		rinfo->nss = nss;
+		rinfo->mcs = mcs;
+	} else if (mod == RTW_HT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_MCS;
+		rinfo->bw = bw ? RATE_INFO_BW_40 : RATE_INFO_BW_20;
+		rinfo->mcs = mcs;
+	}
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+	if (mod == RTW_VHT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_VHT_MCS;
+		rinfo->flags |= bw == CHANNEL_WIDTH_160 ? RATE_INFO_FLAGS_160_MHZ_WIDTH :
+				bw == CHANNEL_WIDTH_80 ? RATE_INFO_FLAGS_80_MHZ_WIDTH :
+				bw == CHANNEL_WIDTH_40 ? RATE_INFO_FLAGS_40_MHZ_WIDTH : 0;
+		rinfo->nss = nss;
+		rinfo->mcs = mcs;
+	} else if (mod == RTW_HT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_MCS;
+		rinfo->flags |= bw ? RATE_INFO_FLAGS_40_MHZ_WIDTH : 0;
+		rinfo->mcs = mcs;
+	}
+#else
+	if (mod == RTW_VHT_MODE) {
+		rinfo->legacy = 0;
+		RTW_INFO("Cannot report VHT rate in current kernel version\n");
+	} else if (mod == RTW_HT_MODE) {
+		rinfo->flags |= RATE_INFO_FLAGS_MCS;
+		rinfo->flags |= bw ? RATE_INFO_FLAGS_40_MHZ_WIDTH : 0;
+		rinfo->mcs = mcs;
+	}
+#endif
+	else {
+		rinfo->legacy = rtw_desc_rate_to_bitrate(0, rtw_rate_idx, 0);
+	}
+}
+
+
+
+
 static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 	struct net_device *ndev,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0))
@@ -2536,10 +2645,13 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 	struct station_info *sinfo)
 {
 	int ret = 0;
+	u8 bw, sgi;
+	u16 rtw_rate_idx;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	struct sta_info *psta = NULL;
 	struct sta_priv *pstapriv = &padapter->stapriv;
+	
 #ifdef CONFIG_RTW_MESH
 	struct mesh_plink_ent *plink = NULL;
 #endif
@@ -2621,6 +2733,8 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 		sinfo->rx_bytes = psta->sta_stats.rx_bytes;
 		sinfo->tx_bytes = psta->sta_stats.tx_bytes;
 
+
+
 		if (psta->connect_time) {
     		sinfo->connected_time = ktime_get_boottime_seconds() - psta->connect_time;
 		} else {
@@ -2631,6 +2745,20 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 		
 		sinfo->filled |= STATION_INFO_TX_FAILED;
 		sinfo->tx_failed = psta->sta_stats.tx_fail_cnt;
+
+		sinfo->filled |= STATION_INFO_TX_BITRATE;
+		rtw_rate_idx = rtw_get_current_tx_rate(padapter, psta);
+		sgi = rtw_get_current_tx_sgi(padapter, psta);
+		bw = psta->phl_sta->chandef.bw;
+		sta_set_rate_info(padapter, &sinfo->txrate, rtw_rate_idx, sgi, bw);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
+		/* Although @rxrate: current unicast bitrate to this station */
+		/* We report sinfo->rxrate as bitrate from this station */
+		sinfo->filled |= STATION_INFO_RX_BITRATE;
+		rtw_get_current_rx_info(padapter, psta, &rtw_rate_idx, &bw, &sgi);
+		sta_set_rate_info(padapter, &sinfo->rxrate, rtw_rate_idx, sgi, bw);
+#endif
+
 	}
 
 #ifdef CONFIG_RTW_MESH

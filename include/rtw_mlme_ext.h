@@ -926,7 +926,10 @@ u8 run_in_thread_hdl(_adapter *padapter, u8 *pbuf);
 
 
 int rtw_sae_preprocess(_adapter *adapter, const u8 *buf, u32 len, u8 tx);
-
+u32 rtw_desc_rate_to_bitrate(u8 bw, u16 rate_idx, u8 sgi);
+u16 rtw_get_current_tx_rate(_adapter *padapter, struct sta_info *psta);
+u8 rtw_get_current_tx_sgi(_adapter *padapter, struct sta_info *psta);
+void rtw_get_current_rx_info(_adapter *adapter, struct sta_info *psta, u16 *rate, u8 *bw, u8 *gi_ltf);
 
 #ifdef CONFIG_RTW_MESH
 extern u8 rtw_mesh_set_plink_state_cmd_hdl(_adapter *adapter, u8 *parmbuf);

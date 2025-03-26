@@ -768,6 +768,9 @@ struct rtw_trx_stat {
 	u32 ltr_tx_dly_count;
 	u32 ltr_last_tx_dly_time;
 #endif
+	u16 rx_rate;
+	u8 rx_bw;
+	u8 rx_gi_ltf;
 };
 
 struct bacam_ctrl_t {

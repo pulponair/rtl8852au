@@ -764,6 +764,9 @@ rtw_hal_set_sta_rx_sts(struct rtw_phl_stainfo_t *sta, u8 rst,
 			sta->hal_sta->trx_stat.rx_err_cnt++;
 		else
 			sta->hal_sta->trx_stat.rx_ok_cnt++;
+			sta->hal_sta->trx_stat.rx_bw = meta->bw;
+			sta->hal_sta->trx_stat.rx_rate = meta->rx_rate;
+			sta->hal_sta->trx_stat.rx_gi_ltf = meta->rx_gi_ltf;			
 	}
 	/* TODO: rx_rate_plurality */
 	return RTW_HAL_STATUS_SUCCESS;
