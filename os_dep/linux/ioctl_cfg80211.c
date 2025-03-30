@@ -6525,7 +6525,7 @@ inline s32 rtw_cfg80211_get_last_ro_ch_passing_ms(_adapter *adapter)
 {
 	return rtw_get_passing_time_ms(adapter->cfg80211_rochinfo.last_ro_ch_time);
 }
-
+//@todo: check what this is about
 #if 1 /*CONFIG_PHL_ARCH*/
 static s32 cfg80211_rtw_remain_on_channel(struct wiphy *wiphy,
 	struct wireless_dev *wdev,
@@ -6744,11 +6744,7 @@ exit:
 #endif /* CONFIG_PHL_ARCH */
 
 static s32 cfg80211_rtw_cancel_remain_on_channel(struct wiphy *wiphy,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	struct wireless_dev *wdev,
-#else
-	struct net_device *ndev,
-#endif
 	u64 cookie)
 {
 	s32 err = 0;
@@ -6756,7 +6752,6 @@ static s32 cfg80211_rtw_cancel_remain_on_channel(struct wiphy *wiphy,
 	struct rtw_wdev_priv *pwdev_priv;
 	struct cfg80211_roch_info *pcfg80211_rochinfo;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	#if defined(RTW_DEDICATED_P2P_DEVICE)
 	if (wdev == wiphy_to_pd_wdev(wiphy))
 		padapter = wiphy_to_adapter(wiphy);
@@ -6768,16 +6763,6 @@ static s32 cfg80211_rtw_cancel_remain_on_channel(struct wiphy *wiphy,
 		err = -EINVAL;
 		goto exit;
 	}
-#else
-	struct wireless_dev *wdev;
-
-	if (ndev == NULL) {
-		err = -EINVAL;
-		goto exit;
-	}
-	padapter = (_adapter *)rtw_netdev_priv(ndev);
-	wdev = ndev_to_wdev(ndev);
-#endif
 
 	pwdev_priv = adapter_wdev_data(padapter);
 	pcfg80211_rochinfo = &padapter->cfg80211_rochinfo;
@@ -6982,46 +6967,15 @@ u8 rtw_mgnt_tx_handler(_adapter *adapter, u8 *buf)
 }
 
 static int cfg80211_rtw_mgmt_tx(struct wiphy *wiphy,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
+
 	struct wireless_dev *wdev,
-#else
-	struct net_device *ndev,
-#endif
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)) || defined(COMPAT_KERNEL_RELEASE)
-	struct ieee80211_channel *chan,
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) || defined(COMPAT_KERNEL_RELEASE)
-	bool offchan,
-	#endif
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-	enum nl80211_channel_type channel_type,
-	#endif
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-	bool channel_type_valid,
-	#endif
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) || defined(COMPAT_KERNEL_RELEASE)
-	unsigned int wait,
-	#endif
-	const u8 *buf, size_t len,
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
-	bool no_cck,
-	#endif
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
-	bool dont_wait_for_ack,
-	#endif
-#else
 	struct cfg80211_mgmt_tx_params *params,
-#endif
 	u64 *cookie)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)) || defined(COMPAT_KERNEL_RELEASE)
 	struct ieee80211_channel *chan = params->chan;
 	const u8 *buf = params->buf;
 	size_t len = params->len;
 	bool no_cck = params->no_cck;
-#endif
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0))
-	bool no_cck = 0;
-#endif
 	int ret = 0;
 	u8 tx_ret;
 	int wait_ack = 1;
@@ -7045,7 +6999,6 @@ static int cfg80211_rtw_mgmt_tx(struct wiphy *wiphy,
 	struct rtw_wdev_priv *pwdev_priv;
 	struct rf_ctl_t *rfctl;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	#if defined(RTW_DEDICATED_P2P_DEVICE)
 	if (wdev == wiphy_to_pd_wdev(wiphy))
 		padapter = wiphy_to_adapter(wiphy);
@@ -7057,16 +7010,6 @@ static int cfg80211_rtw_mgmt_tx(struct wiphy *wiphy,
 		ret = -EINVAL;
 		goto exit;
 	}
-#else
-	struct wireless_dev *wdev;
-
-	if (ndev == NULL) {
-		ret = -EINVAL;
-		goto exit;
-	}
-	padapter = (_adapter *)rtw_netdev_priv(ndev);
-	wdev = ndev_to_wdev(ndev);
-#endif
 
 	if (chan == NULL) {
 		ret = -EINVAL;
@@ -7089,32 +7032,15 @@ static int cfg80211_rtw_mgmt_tx(struct wiphy *wiphy,
 
 	/* cookie generation */
 	*cookie = pwdev_priv->mgmt_tx_cookie++;
-
 #ifdef CONFIG_DEBUG_CFG80211
 	RTW_INFO(FUNC_ADPT_FMT"%s len=%zu, ch=%d"
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-		", ch_type=%d"
-		#endif
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-		", channel_type_valid=%d"
-		#endif
 		"\n", FUNC_ADPT_ARG(padapter), wdev == wiphy_to_pd_wdev(wiphy) ? " PD" : ""
 		, len, tx_ch
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-		, channel_type
-		#endif
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-		, channel_type_valid
-		#endif
 	);
 #endif /* CONFIG_DEBUG_CFG80211 */
 
 	/* indicate ack before issue frame to avoid racing with rsp frame */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE)
 	rtw_cfg80211_mgmt_tx_status(wdev, *cookie, buf, len, ack, GFP_KERNEL);
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34) && LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 36))
-	cfg80211_action_tx_status(ndev, *cookie, buf, len, ack, GFP_KERNEL);
-#endif
 
 	frame_styp = le16_to_cpu(((struct rtw_ieee80211_hdr_3addr *)buf)->frame_ctl) & IEEE80211_FCTL_STYPE;
 	if (IEEE80211_STYPE_PROBE_RESP == frame_styp) {
@@ -7262,16 +7188,10 @@ exit:
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0))
 static void cfg80211_rtw_mgmt_frame_register(struct wiphy *wiphy,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	struct wireless_dev *wdev,
-#else
-	struct net_device *ndev,
-#endif
 	u16 frame_type, bool reg)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	struct net_device *ndev = wdev_to_ndev(wdev);
-#endif
 	_adapter *adapter;
 	struct rtw_wdev_priv *pwdev_priv;
 
@@ -7360,23 +7280,15 @@ exit:
 }
 #endif
 
-#if defined(CONFIG_TDLS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+#if defined(CONFIG_TDLS)
 static int cfg80211_rtw_tdls_mgmt(struct wiphy *wiphy,
 	struct net_device *ndev,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
 	const u8 *peer,
-#else
-	u8 *peer,
-#endif
 	u8 action_code,
 	u8 dialog_token,
 	u16 status_code,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
 	u32 peer_capability,
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0))
 	bool initiator,
-#endif
 	const u8 *buf,
 	size_t len)
 {
@@ -7460,11 +7372,7 @@ discard:
 
 static int cfg80211_rtw_tdls_oper(struct wiphy *wiphy,
 	struct net_device *ndev,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
 	const u8 *peer,
-#else
-	u8 *peer,
-#endif
 	enum nl80211_tdls_operation oper)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
@@ -7547,7 +7455,7 @@ static int cfg80211_rtw_tdls_oper(struct wiphy *wiphy,
 }
 #endif /* CONFIG_TDLS */
 
-#if defined(CONFIG_RTW_MESH) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38))
+#if defined(CONFIG_RTW_MESH)
 
 #if DBG_RTW_CFG80211_MESH_CONF
 #define LEGACY_RATES_STR_LEN (RTW_G_RATES_NUM * 5 + 1)
@@ -7571,77 +7479,41 @@ int get_legacy_rates_str(struct wiphy *wiphy, enum nl80211_band band, u32 mask, 
 
 void dump_mesh_setup(void *sel, struct wiphy *wiphy, const struct mesh_setup *setup)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 	struct cfg80211_chan_def *chdef = (struct cfg80211_chan_def *)(&setup->chandef);
-#endif
 	struct ieee80211_channel *chan;
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 	chan = (struct ieee80211_channel *)chdef->chan;
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-	chan = (struct ieee80211_channel *)setup->channel;
-#endif
 
 	RTW_PRINT_SEL(sel, "mesh_id:\"%s\", len:%u\n", setup->mesh_id, setup->mesh_id_len);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	RTW_PRINT_SEL(sel, "sync_method:%u\n", setup->sync_method);
-#endif
 	RTW_PRINT_SEL(sel, "path_sel_proto:%u, path_metric:%u\n", setup->path_sel_proto, setup->path_metric);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	RTW_PRINT_SEL(sel, "auth_id:%u\n", setup->auth_id);
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+
 	if (setup->ie && setup->ie_len) {
 		RTW_PRINT_SEL(sel, "ie:%p, len:%u\n", setup->ie, setup->ie_len);
 		dump_ies(RTW_DBGDUMP, setup->ie, setup->ie_len);
 	}
-#else
-	if (setup->vendor_ie && setup->vendor_ie_len) {
-		RTW_PRINT_SEL(sel, "ie:%p, len:%u\n", setup->vendor_ie, setup->vendor_ie_len);
-		dump_ies(RTW_DBGDUMP, setup->vendor_ie, setup->vendor_ie_len);
-	}
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
-	RTW_PRINT_SEL(sel, "is_authenticated:%d, is_secure:%d\n", setup->is_authenticated, setup->is_secure);
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
-	RTW_PRINT_SEL(sel, "user_mpm:%d\n", setup->user_mpm);
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
-	RTW_PRINT_SEL(sel, "dtim_period:%u, beacon_interval:%u\n", setup->dtim_period, setup->beacon_interval);
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+	RTW_PRINT_SEL(sel, "is_authenticated:%d, is_secure:%d\n", setup->is_authenticated, setup->is_secure);
+	RTW_PRINT_SEL(sel, "user_mpm:%d\n", setup->user_mpm);
+	RTW_PRINT_SEL(sel, "dtim_period:%u, beacon_interval:%u\n", setup->dtim_period, setup->beacon_interval);
+
 	RTW_PRINT_SEL(sel, "center_freq:%u, ch:%u, width:%s, cfreq1:%u, cfreq2:%u\n"
 		, chan->center_freq, chan->hw_value, nl80211_chan_width_str(chdef->width), chdef->center_freq1, chdef->center_freq2);
-#else
-	RTW_PRINT_SEL(sel, "center_freq:%u, ch:%u, channel_type:%s\n"
-		, chan->center_freq, chan->hw_value, nl80211_channel_type_str(setup->channel_type));
-#endif
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	if (setup->mcast_rate[chan->band]) {
 		RTW_PRINT_SEL(sel, "mcast_rate:%d.%d\n"
 			, wiphy->bands[chan->band]->bitrates[setup->mcast_rate[chan->band] - 1].bitrate / 10
 			, wiphy->bands[chan->band]->bitrates[setup->mcast_rate[chan->band] - 1].bitrate % 10
 		);
 	}
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	if (setup->basic_rates) {
 		char buf[LEGACY_RATES_STR_LEN] = {0};
 
 		get_legacy_rates_str(wiphy, chan->band, setup->basic_rates, buf);
 		RTW_PRINT_SEL(sel, "basic_rates:%s\n", buf);
 	}
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
 	if (setup->beacon_rate.control[chan->band].legacy) {
 		char buf[LEGACY_RATES_STR_LEN] = {0};
 
@@ -7677,7 +7549,6 @@ void dump_mesh_setup(void *sel, struct wiphy *wiphy, const struct mesh_setup *se
 				setup->beacon_rate.control[chan->band].gi == NL80211_TXRATE_FORCE_LGI ? "LGI" : "invalid"
 		);
 	}
-#endif
 }
 
 void dump_mesh_config(void *sel, const struct mesh_config *conf)
@@ -7691,48 +7562,29 @@ void dump_mesh_config(void *sel, const struct mesh_config *conf)
 	RTW_PRINT_SEL(sel, "element_ttl:%u\n", conf->element_ttl);
 	RTW_PRINT_SEL(sel, "auto_open_plinks:%d\n", conf->auto_open_plinks);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	RTW_PRINT_SEL(sel, "dot11MeshNbrOffsetMaxNeighbor:%u\n", conf->dot11MeshNbrOffsetMaxNeighbor);
-#endif
 
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPmaxPREQretries:%u\n", conf->dot11MeshHWMPmaxPREQretries);
 	RTW_PRINT_SEL(sel, "path_refresh_time:%u\n", conf->path_refresh_time);
 	RTW_PRINT_SEL(sel, "min_discovery_timeout:%u\n", conf->min_discovery_timeout);
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPactivePathTimeout:%u\n", conf->dot11MeshHWMPactivePathTimeout);
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPpreqMinInterval:%u\n", conf->dot11MeshHWMPpreqMinInterval);	
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPperrMinInterval:%u\n", conf->dot11MeshHWMPperrMinInterval);
-#endif
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPnetDiameterTraversalTime:%u\n", conf->dot11MeshHWMPnetDiameterTraversalTime);
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPRootMode:%u\n", conf->dot11MeshHWMPRootMode);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPRannInterval:%u\n", conf->dot11MeshHWMPRannInterval);
 	RTW_PRINT_SEL(sel, "dot11MeshGateAnnouncementProtocol:%d\n", conf->dot11MeshGateAnnouncementProtocol);
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
 	RTW_PRINT_SEL(sel, "dot11MeshForwarding:%d\n", conf->dot11MeshForwarding);
 	RTW_PRINT_SEL(sel, "rssi_threshold:%d\n", conf->rssi_threshold);
-#endif
-	
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	RTW_PRINT_SEL(sel, "ht_opmode:0x%04x\n", conf->ht_opmode);
-#endif
-	
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPactivePathToRootTimeout:%u\n", conf->dot11MeshHWMPactivePathToRootTimeout);
 	RTW_PRINT_SEL(sel, "dot11MeshHWMProotInterval:%u\n", conf->dot11MeshHWMProotInterval);
 	RTW_PRINT_SEL(sel, "dot11MeshHWMPconfirmationInterval:%u\n", conf->dot11MeshHWMPconfirmationInterval);
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 	RTW_PRINT_SEL(sel, "power_mode:%s\n", nl80211_mesh_power_mode_str(conf->power_mode));
 	RTW_PRINT_SEL(sel, "dot11MeshAwakeWindowDuration:%u\n", conf->dot11MeshAwakeWindowDuration);
-#endif
 	
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	RTW_PRINT_SEL(sel, "plink_timeout:%u\n", conf->plink_timeout);
-#endif
 }
 #endif /* DBG_RTW_CFG80211_MESH_CONF */
 
@@ -7743,49 +7595,8 @@ static void rtw_cfg80211_mesh_info_set_profile(struct rtw_mesh_info *minfo, cons
 	minfo->mesh_pp_id = setup->path_sel_proto;
 	minfo->mesh_pm_id = setup->path_metric;
 	minfo->mesh_cc_id = 0;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	minfo->mesh_sp_id = setup->sync_method;
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	minfo->mesh_auth_id = setup->auth_id;
-#else
-	if (setup->is_authenticated) {
-		u8 *rsn_ie;
-		sint rsn_ie_len;
-		struct rsne_info info;
-		u8 *akm;
-		u8 AKM_SUITE_SAE[4] = {0x00, 0x0F, 0xAC, 0x08};
-
-		rsn_ie = rtw_get_ie(setup->ie, WLAN_EID_RSN, &rsn_ie_len, setup->ie_len);
-		if (!rsn_ie || !rsn_ie_len) {
-			rtw_warn_on(1);
-			return;
-		}
-
-		if (rtw_rsne_info_parse(rsn_ie, rsn_ie_len + 2, &info) != _SUCCESS) {
-			rtw_warn_on(1);
-			return;
-		}
-
-		if (!info.akm_list || !info.akm_cnt) {
-			rtw_warn_on(1);
-			return;
-		}
-
-		akm = info.akm_list;
-		while (akm < info.akm_list + info.akm_cnt * 4) {
-			if (_rtw_memcmp(akm, AKM_SUITE_SAE, 4) == _TRUE) {
-				minfo->mesh_auth_id = 0x01;
-				break;
-			}
-		}
-
-		if (!minfo->mesh_auth_id) {
-			rtw_warn_on(1);
-			return;
-		}
-	}
-#endif
 }
 
 static inline bool chk_mesh_attr(enum nl80211_meshconf_params parm, u32 mask)
@@ -7830,16 +7641,13 @@ static void rtw_cfg80211_mesh_cfg_set(_adapter *adapter, const struct mesh_confi
 		mcfg->dot11MeshHWMPactivePathTimeout = conf->dot11MeshHWMPactivePathTimeout;
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_PREQ_MIN_INTERVAL, mask))
 		mcfg->dot11MeshHWMPpreqMinInterval = conf->dot11MeshHWMPpreqMinInterval;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_PERR_MIN_INTERVAL, mask))
 		mcfg->dot11MeshHWMPperrMinInterval = conf->dot11MeshHWMPperrMinInterval;
-#endif
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_NET_DIAM_TRVS_TIME, mask))
 		mcfg->dot11MeshHWMPnetDiameterTraversalTime = conf->dot11MeshHWMPnetDiameterTraversalTime;
 
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_ROOTMODE, mask))
 		mcfg->dot11MeshHWMPRootMode = conf->dot11MeshHWMPRootMode;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	if (chk_mesh_attr(NL80211_MESHCONF_GATE_ANNOUNCEMENTS, mask))
 		mcfg->dot11MeshGateAnnouncementProtocol = conf->dot11MeshGateAnnouncementProtocol;
 	/* our current gate annc implementation rides on root annc with gate annc bit in PREQ flags */
@@ -7851,14 +7659,11 @@ static void rtw_cfg80211_mesh_cfg_set(_adapter *adapter, const struct mesh_confi
 	}
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_RANN_INTERVAL, mask))
 		mcfg->dot11MeshHWMPRannInterval = conf->dot11MeshHWMPRannInterval;
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
 	if (chk_mesh_attr(NL80211_MESHCONF_FORWARDING, mask))
 		mcfg->dot11MeshForwarding = conf->dot11MeshForwarding;
 
 	if (chk_mesh_attr(NL80211_MESHCONF_RSSI_THRESHOLD, mask))
 		mcfg->rssi_threshold = conf->rssi_threshold;
-#endif
 
 #if 0 /* controlled by driver */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
@@ -7866,20 +7671,16 @@ static void rtw_cfg80211_mesh_cfg_set(_adapter *adapter, const struct mesh_confi
 #endif
 #endif
 	
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_PATH_TO_ROOT_TIMEOUT, mask))
 		mcfg->dot11MeshHWMPactivePathToRootTimeout = conf->dot11MeshHWMPactivePathToRootTimeout;
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_ROOT_INTERVAL, mask))
 		mcfg->dot11MeshHWMProotInterval = conf->dot11MeshHWMProotInterval;
 	if (chk_mesh_attr(NL80211_MESHCONF_HWMP_CONFIRMATION_INTERVAL, mask))
 		mcfg->dot11MeshHWMPconfirmationInterval = conf->dot11MeshHWMPconfirmationInterval;	
-#endif
 
 #if 0 /* TBD */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 	if (chk_mesh_attr(NL80211_MESHCONF_POWER_MODE, mask));
 	if (chk_mesh_attr(NL80211_MESHCONF_AWAKE_WINDOW, mask));
-#endif
 #endif
 
 #if 0 /* driver MPM */
@@ -7895,13 +7696,10 @@ u8 *rtw_cfg80211_construct_mesh_beacon_ies(struct wiphy *wiphy, _adapter *adapte
 {
 	struct rtw_mesh_info *minfo = &adapter->mesh_info;
 	struct rtw_mesh_cfg *mcfg = &adapter->mesh_cfg;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+
+
 	struct cfg80211_chan_def *chdef = (struct cfg80211_chan_def *)(&setup->chandef);
-#endif
-	struct ieee80211_channel *chan;
-	u8 ch, bw, offset;
-#endif
+
 	uint len;
 	u8 n_bitrates;
 	u8 ht = 0;
@@ -7914,20 +7712,16 @@ u8 *rtw_cfg80211_construct_mesh_beacon_ies(struct wiphy *wiphy, _adapter *adapte
 
 	*ies_len = 0;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+
 	chan = (struct ieee80211_channel *)chdef->chan;
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-	chan = (struct ieee80211_channel *)setup->channel;
-#endif
+
+
 
 	n_bitrates = wiphy->bands[chan->band]->n_bitrates;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+
 	rtw_get_chbw_from_cfg80211_chan_def(chdef, &ht, &ch, &bw, &offset);
-#else
-	rtw_get_chbw_from_nl80211_channel_type(chan, setup->channel_type, &ht, &ch, &bw, &offset);
-#endif
+
 	if (!ch)
 		goto exit;
 	
@@ -7937,7 +7731,6 @@ u8 *rtw_cfg80211_construct_mesh_beacon_ies(struct wiphy *wiphy, _adapter *adapte
 
 	RTW_INFO(FUNC_ADPT_FMT" => ch:%u,%u,%u, ht:%u, vht:%u\n"
 		, FUNC_ADPT_ARG(adapter), ch, bw, offset, ht, vht);
-#endif
 
 	rsn_ie = rtw_get_ie(setup->ie, WLAN_EID_RSN, &rsn_ie_len, setup->ie_len);
 	if (rsn_ie && !rsn_ie_len) {
@@ -7984,11 +7777,7 @@ u8 *rtw_cfg80211_construct_mesh_beacon_ies(struct wiphy *wiphy, _adapter *adapte
 	/* Supported Rates */
 	for (i = 0; i < n_bitrates; i++) {
 		supported_rates[i] = wiphy->bands[chan->band]->bitrates[i].bitrate / 5;
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 		if (setup->basic_rates & BIT(i))
-		#else
-		if (rtw_is_basic_rate_mix(supported_rates[i]))
-		#endif
 			supported_rates[i] |= IEEE80211_BASIC_RATE_MASK;
 	}
 	c = rtw_set_ie(c, WLAN_EID_SUPP_RATES, (n_bitrates >= 8 ? 8 : n_bitrates), supported_rates, NULL);
@@ -8048,7 +7837,7 @@ u8 *rtw_cfg80211_construct_mesh_beacon_ies(struct wiphy *wiphy, _adapter *adapte
 	}
 #endif /* defined(CONFIG_80211N_HT) */
 
-#if defined(CONFIG_80211AC_VHT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
+#if defined(CONFIG_80211AC_VHT)
 	if (vht) {
 		struct ieee80211_sta_vht_cap *sta_vht_cap = &wiphy->bands[chan->band]->vht_cap;
 		u8 vht_cap[VHT_CAP_IE_LEN];
@@ -8136,49 +7925,33 @@ static int cfg80211_rtw_get_mesh_config(struct wiphy *wiphy, struct net_device *
 	conf->auto_open_plinks = 0;
 
 	/* TBD: synchronization */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	conf->dot11MeshNbrOffsetMaxNeighbor = 0;
-#endif
 
 	conf->dot11MeshHWMPmaxPREQretries = mesh_cfg->dot11MeshHWMPmaxPREQretries;
 	conf->path_refresh_time = mesh_cfg->path_refresh_time;
 	conf->min_discovery_timeout = mesh_cfg->min_discovery_timeout;
 	conf->dot11MeshHWMPactivePathTimeout = mesh_cfg->dot11MeshHWMPactivePathTimeout;
 	conf->dot11MeshHWMPpreqMinInterval = mesh_cfg->dot11MeshHWMPpreqMinInterval;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	conf->dot11MeshHWMPperrMinInterval = mesh_cfg->dot11MeshHWMPperrMinInterval;
-#endif
 	conf->dot11MeshHWMPnetDiameterTraversalTime = mesh_cfg->dot11MeshHWMPnetDiameterTraversalTime;
 	conf->dot11MeshHWMPRootMode = mesh_cfg->dot11MeshHWMPRootMode;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	conf->dot11MeshHWMPRannInterval = mesh_cfg->dot11MeshHWMPRannInterval;
-#endif
 	conf->dot11MeshGateAnnouncementProtocol = mesh_cfg->dot11MeshGateAnnouncementProtocol;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0))
 	conf->dot11MeshForwarding = mesh_cfg->dot11MeshForwarding;
 	conf->rssi_threshold = mesh_cfg->rssi_threshold;
-#endif
 
 	/* TBD */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 	conf->ht_opmode = 0xffff;
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	conf->dot11MeshHWMPactivePathToRootTimeout = mesh_cfg->dot11MeshHWMPactivePathToRootTimeout;
 	conf->dot11MeshHWMProotInterval = mesh_cfg->dot11MeshHWMProotInterval;
 	conf->dot11MeshHWMPconfirmationInterval = mesh_cfg->dot11MeshHWMPconfirmationInterval;
-#endif
 
 	/* TBD: power save */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 	conf->power_mode = NL80211_MESH_POWER_ACTIVE;
 	conf->dot11MeshAwakeWindowDuration = 0;
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	conf->plink_timeout = mesh_cfg->plink_timeout;
-#endif
 
 	return ret;
 }
@@ -8288,12 +8061,7 @@ static int cfg80211_rtw_leave_mesh(struct wiphy *wiphy, struct net_device *dev)
 }
 
 static int cfg80211_rtw_add_mpath(struct wiphy *wiphy, struct net_device *dev
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
-	, const u8 *dst, const u8 *next_hop
-	#else
-	, u8 *dst, u8 *next_hop
-	#endif
-)
+	, const u8 *dst, const u8 *next_hop)
 {
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
 	struct sta_priv *stapriv = &adapter->stapriv;
@@ -8323,13 +8091,7 @@ exit:
 	return ret;
 }
 
-static int cfg80211_rtw_del_mpath(struct wiphy *wiphy, struct net_device *dev
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
-	, const u8 *dst
-	#else
-	, u8 *dst
-	#endif
-)
+static int cfg80211_rtw_del_mpath(struct wiphy *wiphy, struct net_device *dev, const u8 *dst)
 {
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
 	int ret = 0;
@@ -8347,13 +8109,7 @@ exit:
 	return ret;
 }
 
-static int cfg80211_rtw_change_mpath(struct wiphy *wiphy, struct net_device *dev
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
-	, const u8 *dst, const u8 *next_hop
-	#else
-	, u8 *dst, u8 *next_hop
-	#endif
-)
+static int cfg80211_rtw_change_mpath(struct wiphy *wiphy, struct net_device *dev, const u8 *dst, const u8 *next_hop)
 {
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
 	struct sta_priv *stapriv = &adapter->stapriv;
@@ -8470,7 +8226,6 @@ exit:
 	return ret;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 static void rtw_cfg80211_mpp_set_pinfo(struct rtw_mesh_path *mpath, u8 *mpp, struct mpath_info *pinfo)
 {
 	_rtw_memcpy(mpp, mpath->mpp, ETH_ALEN);
@@ -8523,11 +8278,11 @@ exit:
 
 	return ret;
 }
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) */
+
 
 #endif /* defined(CONFIG_RTW_MESH) */
 
-#if defined(CONFIG_PNO_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+#if defined(CONFIG_PNO_SUPPORT) 
 static int cfg80211_rtw_sched_scan_start(struct wiphy *wiphy,
 		struct net_device *dev,
 		struct cfg80211_sched_scan_request *request)
@@ -8557,13 +8312,9 @@ static int cfg80211_rtw_sched_scan_start(struct wiphy *wiphy,
 		RTW_INFO("%s: invalid cfg80211_requests parameters.\n", __func__);
 		return -EINVAL;
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0)
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 	interval = request->scan_plans->interval;
-#else
-	interval = request->interval;
-#endif
+
 	n_ssids = request->n_match_sets;
 	ssids = (struct cfg80211_ssid *)rtw_zmalloc(n_ssids * sizeof(struct cfg80211_ssid));
 	if(ssids == NULL) {
@@ -8575,11 +8326,6 @@ static int cfg80211_rtw_sched_scan_start(struct wiphy *wiphy,
 			_rtw_memcpy(ssids[i].ssid, request->match_sets[i].ssid.ssid,
 					request->match_sets[i].ssid.ssid_len);
 	}
-#else
-	interval = request->interval;
-	n_ssids = request->n_ssids;
-	ssids = request->ssids;
-#endif
 ret = rtw_android_cfg80211_pno_setup(dev, ssids,
 			n_ssids, interval);
 	if (ret < 0) {
@@ -8812,16 +8558,14 @@ static int rtw_cfg80211_set_probe_resp_wpsp2pie(struct net_device *net, char *bu
 				#ifdef CONFIG_DEBUG_CFG80211
 				/* printk("config_method in wpsie of probe_resp = 0x%x\n", be16_to_cpu(*puconfig_method)); */
 				#endif
-
-				#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE)
+		
 				/* for WIFI-DIRECT LOGO 4.2.2, AUTO GO can't set PUSH_BUTTON flags */
 				if (wdev->iftype == NL80211_IFTYPE_P2P_GO) {
 					uconfig_method = WPS_CM_PUSH_BUTTON;
 					uconfig_method = cpu_to_be16(uconfig_method);
 
 					*puconfig_method &= ~uconfig_method;
-				}
-				#endif
+				}		
 			}
 
 			_rtw_memcpy(pmlmepriv->wps_probe_resp_ie, wps_ie, wps_ielen);
@@ -9123,7 +8867,7 @@ static void rtw_cfg80211_init_ht_capab(_adapter *padapter,
 }
 #endif /* CONFIG_80211N_HT */
 
-#if defined(CONFIG_80211AC_VHT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
+#if defined(CONFIG_80211AC_VHT) 
 static void rtw_cfg80211_init_vht_capab(_adapter *padapter,
 	struct ieee80211_sta_vht_cap *sta_vht_cap,
 	enum band_type band, u8 rf_type, struct protocol_cap_t *dft_proto_cap,
@@ -9144,9 +8888,9 @@ static void rtw_cfg80211_init_vht_capab(_adapter *padapter,
 	_rtw_memcpy(&sta_vht_cap->cap, vht_cap_ie + 2, 4);
 	_rtw_memcpy(&sta_vht_cap->vht_mcs, vht_cap_ie + 2 + 4, 8);
 }
-#endif /* defined(CONFIG_80211AC_VHT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)) */
+#endif /* defined(CONFIG_80211AC_VHT) */
 
-#if defined(CONFIG_80211AX_HE) && (defined(CPTCFG_VERSION) || (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)))
+#if defined(CONFIG_80211AX_HE) 
 static int rtw_cfg80211_init_he_capab(_adapter *padapter,
 	struct ieee80211_sband_iftype_data *sta_iface_data,
 	enum nl80211_iftype iftype, struct phy_cap_t *phy_cap,
@@ -9230,7 +8974,7 @@ static void rtw_cfg80211_init_sband_iftype_data(_adapter *padapter,
 	if (ret == _SUCCESS)
 		band->n_iftype_data += 1;
 }
-#endif /* defined(CONFIG_80211AX_HE) && (defined(CPTCFG_VERSION) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)) */
+#endif /* defined(CONFIG_80211AX_HE) */
 
 static int rtw_cfg80211_init_wiphy_band(_adapter *padapter, struct wiphy *wiphy)
 {
@@ -9284,10 +9028,10 @@ static int rtw_cfg80211_init_wiphy_band(_adapter *padapter, struct wiphy *wiphy)
 		rtw_cfg80211_init_ht_capab(padapter, &band->ht_cap,
 					BAND_ON_24G, rf_type, &dft_sta_proto_cap, &dft_cap);
 		#endif
-		#if defined(CONFIG_80211AX_HE) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0))
+		#if defined(CONFIG_80211AX_HE) 
 		rtw_cfg80211_init_sband_iftype_data(padapter, band, phy_cap,
 			&dft_cap, &dft_sta_proto_cap, &dft_ap_proto_cap);
-		#endif /* defined(CONFIG_80211AX_HE) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) */
+		#endif /* defined(CONFIG_80211AX_HE)  */
 	}
 
 	#if CONFIG_IEEE80211_BAND_5GHZ
@@ -9307,14 +9051,14 @@ static int rtw_cfg80211_init_wiphy_band(_adapter *padapter, struct wiphy *wiphy)
 		rtw_cfg80211_init_ht_capab(padapter, &band->ht_cap,
 					BAND_ON_5G, rf_type, &dft_sta_proto_cap, &dft_cap);
 		#endif
-		#if defined(CONFIG_80211AC_VHT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
+		#if defined(CONFIG_80211AC_VHT) 
 		rtw_cfg80211_init_vht_capab(padapter, &band->vht_cap,
 					BAND_ON_5G, rf_type, &dft_sta_proto_cap, &dft_cap);
 		#endif
-		#if defined(CONFIG_80211AX_HE) && (defined(CPTCFG_VERSION) || (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)))
+		#if defined(CONFIG_80211AX_HE) 
 		rtw_cfg80211_init_sband_iftype_data(padapter, band, phy_cap,
 			&dft_cap, &dft_sta_proto_cap, &dft_ap_proto_cap);
-		#endif /* defined(CONFIG_80211AX_HE) && (defined(CPTCFG_VERSION) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)) */
+		#endif /* defined(CONFIG_80211AX_HE) */
 	}
 	#endif
 	ret = _SUCCESS;
@@ -9324,12 +9068,12 @@ exit:
 
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)) && (CONFIG_IFACE_NUMBER >= 2)
+#if CONFIG_IFACE_NUMBER >= 2
 struct ieee80211_iface_limit rtw_limits[] = {
 	{
 		.max = CONFIG_IFACE_NUMBER,
 		.types = BIT(NL80211_IFTYPE_STATION)
-			#if defined(CONFIG_P2P) && ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE))
+			#if defined(CONFIG_P2P)
 			| BIT(NL80211_IFTYPE_P2P_CLIENT)
 			#endif
 	},
@@ -9337,7 +9081,7 @@ struct ieee80211_iface_limit rtw_limits[] = {
 	{
 		.max = rtw_min(CONFIG_IFACE_NUMBER, CONFIG_LIMITED_AP_NUM),
 		.types = BIT(NL80211_IFTYPE_AP)
-			#if defined(CONFIG_P2P) && ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE))
+			#if defined(CONFIG_P2P) 
 			| BIT(NL80211_IFTYPE_P2P_GO)
 			#endif
 	},
@@ -9368,7 +9112,7 @@ struct ieee80211_iface_combination rtw_combinations[] = {
 		.num_different_channels = 1,
 	},
 };
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)) */
+#endif /* CONFIG_IFACE_NUMBER >= 2 */
 
 static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 {
@@ -9380,19 +9124,15 @@ static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 	_rtw_memcpy(wiphy->perm_addr, adapter_mac_addr(adapter), ETH_ALEN);
 
 	wiphy->signal_type = CFG80211_SIGNAL_TYPE_MBM;
-
 	wiphy->max_scan_ssids = RTW_SSID_SCAN_AMOUNT;
 	wiphy->max_scan_ie_len = RTW_SCAN_IE_LEN_MAX;
 	wiphy->max_num_pmkids = RTW_MAX_NUM_PMKIDS;
 
-#if CONFIG_RTW_MACADDR_ACL && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if CONFIG_RTW_MACADDR_ACL 
 	wiphy->max_acl_mac_addrs = NUM_ACL;
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) || defined(COMPAT_KERNEL_RELEASE)
 	wiphy->max_remain_on_channel_duration = RTW_MAX_REMAIN_ON_CHANNEL_DURATION;
-#endif
-
 	wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION)
 		| BIT(NL80211_IFTYPE_ADHOC)
 		#ifdef CONFIG_AP_MODE
@@ -9401,7 +9141,7 @@ static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 		| BIT(NL80211_IFTYPE_MONITOR)
 		#endif
 		#endif
-		#if defined(CONFIG_P2P) && ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE))
+		#if defined(CONFIG_P2P)
 		| BIT(NL80211_IFTYPE_P2P_CLIENT)
 		| BIT(NL80211_IFTYPE_P2P_GO)
 		#if defined(RTW_DEDICATED_P2P_DEVICE)
@@ -9414,19 +9154,15 @@ static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 		#endif
 		;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE)
 #ifdef CONFIG_AP_MODE
 	wiphy->mgmt_stypes = rtw_cfg80211_default_mgmt_stypes;
 #endif /* CONFIG_AP_MODE */
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
-	#ifdef CONFIG_WIFI_MONITOR
+#ifdef CONFIG_WIFI_MONITOR
 	wiphy->software_iftypes |= BIT(NL80211_IFTYPE_MONITOR);
-	#endif
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)) && (CONFIG_IFACE_NUMBER >= 2)
+#if CONFIG_IFACE_NUMBER >= 2
 	wiphy->iface_combinations = rtw_combinations;
 	wiphy->n_iface_combinations = ARRAY_SIZE(rtw_combinations);
 #endif
@@ -9439,42 +9175,19 @@ static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 		goto exit;
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0))
-	wiphy->flags |= WIPHY_FLAG_SUPPORTS_SEPARATE_DEFAULT_KEYS;
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	wiphy->flags |= WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL;
 	wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME;
 	/* OFFCHAN_TX not ready, Mgmt tx depend on REMAIN_ON_CHANNEL */
 	/* wiphy->flags |= WIPHY_FLAG_OFFCHAN_TX; */
-#endif
 
-#if (KERNEL_VERSION(3, 2, 0) <= LINUX_VERSION_CODE)
 	wiphy->flags |= WIPHY_FLAG_AP_UAPSD;
-#endif
 
-#if !defined(CPTCFG_VERSION) && defined(CONFIG_PM) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) && \
-			   LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
-	wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
-#ifdef CONFIG_PNO_SUPPORT
-	wiphy->max_sched_scan_ssids = MAX_PNO_LIST_COUNT;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0)
-	wiphy->max_match_sets = MAX_PNO_LIST_COUNT;
-#endif
-#endif
-#endif
 
-#if defined(CONFIG_PM) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0))
-	wiphy->wowlan = wowlan_stub;
-#else
+#if defined(CONFIG_PM) 
 	wiphy->wowlan = &wowlan_stub;
 #endif
-#endif
 
-#if defined(CONFIG_TDLS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
-	wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS;
+#if defined(CONFIG_TDLS)
 #ifndef CONFIG_TDLS_DRIVER_SETUP
 	wiphy->flags |= WIPHY_FLAG_TDLS_EXTERNAL_SETUP;	/* Driver handles key exchange */
 	wiphy->flags |= NL80211_ATTR_HT_CAPABILITY;
@@ -9486,50 +9199,34 @@ static int rtw_cfg80211_init_wiphy(_adapter *adapter, struct wiphy *wiphy)
 	else
 		wiphy->flags &= ~WIPHY_FLAG_PS_ON_BY_DEFAULT;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	/* wiphy->flags |= WIPHY_FLAG_SUPPORTS_FW_ROAM; */
-#endif
 
 #ifdef CONFIG_RTW_WDS
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33))
 	wiphy->flags |= WIPHY_FLAG_4ADDR_AP;
 	wiphy->flags |= WIPHY_FLAG_4ADDR_STATION;
-	#endif
 #endif
 
 #ifdef CONFIG_RTW_MESH
 	wiphy->flags |= 0
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 		| WIPHY_FLAG_IBSS_RSN
-		#endif
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
 		| WIPHY_FLAG_MESH_AUTH
-		#endif
 		;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	wiphy->features |= 0
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
 		| NL80211_FEATURE_USERSPACE_MPM
-		#endif
 		;
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)) */
 #endif /* CONFIG_RTW_MESH */
 
-#if defined(CONFIG_RTW_80211K) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0))
+#if defined(CONFIG_RTW_80211K)
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_RRM);
 #endif
 
-#if (KERNEL_VERSION(3, 8, 0) <= LINUX_VERSION_CODE)
 	wiphy->features |= NL80211_FEATURE_SAE;
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 #ifdef CONFIG_WIFI_MONITOR
 	/* Currently only for Monitor debugging */
 	wiphy->flags |= WIPHY_FLAG_SUPPORTS_5_10_MHZ;
 #endif
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)) */
 	ret = _SUCCESS;
 
 exit:
@@ -9570,15 +9267,7 @@ static void cfg80211_rtw_rfkill_poll(struct wiphy *wiphy)
 }
 #endif
 
-#if defined(CONFIG_RTW_HOSTAPD_ACS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33))
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
-#define SURVEY_INFO_TIME			SURVEY_INFO_CHANNEL_TIME
-#define SURVEY_INFO_TIME_BUSY		SURVEY_INFO_CHANNEL_TIME_BUSY
-#define SURVEY_INFO_TIME_EXT_BUSY	SURVEY_INFO_CHANNEL_TIME_EXT_BUSY
-#define SURVEY_INFO_TIME_RX			SURVEY_INFO_CHANNEL_TIME_RX
-#define SURVEY_INFO_TIME_TX			SURVEY_INFO_CHANNEL_TIME_TX
-#endif
+#if defined(CONFIG_RTW_HOSTAPD_ACS)
 
 #ifdef CONFIG_FIND_BEST_CHANNEL
 static void rtw_cfg80211_set_survey_info_with_find_best_channel(struct wiphy *wiphy
@@ -9595,11 +9284,7 @@ static void rtw_cfg80211_set_survey_info_with_find_best_channel(struct wiphy *wi
 	u64 time = 100;		/*amount of time in ms the radio was turn on (on the channel)*/
 	u64 time_busy = 0;	/*amount of time the primary channel was sensed busy*/
 
-	info->filled  = SURVEY_INFO_NOISE_DBM
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
-		| SURVEY_INFO_TIME | SURVEY_INFO_TIME_BUSY
-		#endif
-		;
+	info->filled  = SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME | SURVEY_INFO_TIME_BUSY;
 
 	for (i = 0; i < ch_num; i++)
 		total_rx_cnt += ch_set[i].rx_count;
@@ -9607,15 +9292,8 @@ static void rtw_cfg80211_set_survey_info_with_find_best_channel(struct wiphy *wi
 	time_busy = ch_set[idx].rx_count * time / total_rx_cnt;
 	noise += ch_set[idx].rx_count * 50 / total_rx_cnt;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
-	info->channel_time = time;
-	info->channel_time_busy = time_busy;
-	#else
 	info->time = time;
 	info->time_busy = time_busy;
-	#endif
-#endif
 	info->noise = noise;
 
 	/* reset if final channel is got */
@@ -9636,26 +9314,16 @@ static void rtw_cfg80211_set_survey_info_with_clm(_adapter *padapter, int idx, s
 	if ((idx < 0) || (pinfo == NULL))
 		return;
 
-	pinfo->filled  = SURVEY_INFO_NOISE_DBM
-		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
-		| SURVEY_INFO_TIME | SURVEY_INFO_TIME_BUSY
-		#endif
-		;
+	pinfo->filled  = SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME | SURVEY_INFO_TIME_BUSY;
 
 	time_busy = rtw_acs_get_clm_ratio_by_idx(padapter, idx);
 	noise = rtw_noise_query_by_idx(padapter, idx);
 	RTW_INFO("[%d] ch=%d, time=%d(ms), time_busy=%d(ms), noise=%d(dbm)\n",
 		idx, pinfo->channel->hw_value, time, time_busy, noise);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
-	pinfo->channel_time = time;
-	pinfo->channel_time_busy = time_busy;
-	#else
 	pinfo->time = time;
 	pinfo->time_busy = time_busy;
-	#endif
-#endif
+
 	pinfo->noise = noise;
 }
 #endif
@@ -9698,8 +9366,6 @@ int rtw_hostapd_acs_dump_survey(struct wiphy *wiphy, struct net_device *netdev, 
 }
 #endif /* defined(CONFIG_RTW_HOSTAPD_ACS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)) */
 
-#if defined(CPTCFG_VERSION) || (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) \
-    || defined(CONFIG_KERNEL_PATCH_EXTERNAL_AUTH)
 static int cfg80211_rtw_external_auth(struct wiphy *wiphy, struct net_device *dev,
 	struct cfg80211_external_auth_params *params)
 {
@@ -9712,7 +9378,6 @@ static int cfg80211_rtw_external_auth(struct wiphy *wiphy, struct net_device *de
 
 	return 0;
 }
-#endif
 
 void rtw_cfg80211_external_auth_status(struct wiphy *wiphy, struct net_device *dev,
 	struct rtw_external_auth_params *params)
@@ -9793,17 +9458,13 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 	.get_key = cfg80211_rtw_get_key,
 	.del_key = cfg80211_rtw_del_key,
 	.set_default_key = cfg80211_rtw_set_default_key,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30))
 	.set_default_mgmt_key = cfg80211_rtw_set_default_mgmt_key,
-#endif
-#if defined(CONFIG_GTK_OL) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0))
+#if defined(CONFIG_GTK_OL)
 	.set_rekey_data = cfg80211_rtw_set_rekey_data,
 #endif /*CONFIG_GTK_OL*/
 	.get_station = cfg80211_rtw_get_station,
 	.scan = cfg80211_rtw_scan,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
 	.abort_scan = cfg80211_rtw_abort_scan,
-#endif /* LINUX_VERSION_CODE 4.5.0 */
 	.set_wiphy_params = cfg80211_rtw_set_wiphy_params,
 	.connect = cfg80211_rtw_connect,
 	.disconnect = cfg80211_rtw_disconnect,
@@ -9819,18 +9480,11 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 #ifdef CONFIG_AP_MODE
 	.add_virtual_intf = cfg80211_rtw_add_virtual_intf,
 	.del_virtual_intf = cfg80211_rtw_del_virtual_intf,
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)) && !defined(COMPAT_KERNEL_RELEASE)
-	.add_beacon = cfg80211_rtw_add_beacon,
-	.set_beacon = cfg80211_rtw_set_beacon,
-	.del_beacon = cfg80211_rtw_del_beacon,
-#else
 	.start_ap = cfg80211_rtw_start_ap,
 	.change_beacon = cfg80211_rtw_change_beacon,
 	.stop_ap = cfg80211_rtw_stop_ap,
-#endif
 
-#if CONFIG_RTW_MACADDR_ACL && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#if CONFIG_RTW_MACADDR_ACL
 	.set_mac_acl = cfg80211_rtw_set_mac_acl,
 #endif
 
@@ -9839,17 +9493,13 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 	.change_station = cfg80211_rtw_change_station,
 	.dump_station = cfg80211_rtw_dump_station,
 	.change_bss = cfg80211_rtw_change_bss,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29))
 	.set_txq_params = cfg80211_rtw_set_txq_params,
-#endif
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
-	.set_channel = cfg80211_rtw_set_channel,
-#endif
+
 	/* .auth = cfg80211_rtw_auth, */
 	/* .assoc = cfg80211_rtw_assoc,	 */
 #endif /* CONFIG_AP_MODE */
 
-#if defined(CONFIG_RTW_MESH) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38))
+#if defined(CONFIG_RTW_MESH) 
 	.get_mesh_config = cfg80211_rtw_get_mesh_config,
 	.update_mesh_config = cfg80211_rtw_update_mesh_config,
 	.join_mesh = cfg80211_rtw_join_mesh,
@@ -9859,18 +9509,12 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 	.change_mpath = cfg80211_rtw_change_mpath,
 	.get_mpath = cfg80211_rtw_get_mpath,
 	.dump_mpath = cfg80211_rtw_dump_mpath,
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 	.get_mpp = cfg80211_rtw_get_mpp,
 	.dump_mpp = cfg80211_rtw_dump_mpp,
-	#endif
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	.set_monitor_channel = cfg80211_rtw_set_monitor_channel,
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 	.get_channel = cfg80211_rtw_get_channel,
-#endif
 
 	.remain_on_channel = cfg80211_rtw_remain_on_channel,
 	.cancel_remain_on_channel = cfg80211_rtw_cancel_remain_on_channel,
@@ -9884,26 +9528,20 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 #ifdef CONFIG_RTW_80211R
 	.update_ft_ies = cfg80211_rtw_update_ft_ies,
 #endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE)
 	.mgmt_tx = cfg80211_rtw_mgmt_tx,
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0))
 	.mgmt_frame_register = cfg80211_rtw_mgmt_frame_register,
 #else
 	.update_mgmt_frame_registrations = cfg80211_rtw_update_mgmt_frame_register,
 #endif
 
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34) && LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35))
-	.action = cfg80211_rtw_mgmt_tx,
-#endif
 
-#if defined(CONFIG_TDLS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
+#if defined(CONFIG_TDLS) 
 	.tdls_mgmt = cfg80211_rtw_tdls_mgmt,
 	.tdls_oper = cfg80211_rtw_tdls_oper,
 #endif /* CONFIG_TDLS */
 
-#if defined(CONFIG_PNO_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+#if defined(CONFIG_PNO_SUPPORT) 
 	.sched_scan_start = cfg80211_rtw_sched_scan_start,
 	.sched_scan_stop = cfg80211_rtw_sched_scan_stop,
 	.suspend = cfg80211_rtw_suspend,
@@ -9912,13 +9550,10 @@ struct cfg80211_ops rtw_cfg80211_ops = {
 #ifdef CONFIG_RFKILL_POLL
 	.rfkill_poll = cfg80211_rtw_rfkill_poll,
 #endif
-#if defined(CONFIG_RTW_HOSTAPD_ACS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33))
+#if defined(CONFIG_RTW_HOSTAPD_ACS) 
 	.dump_survey = rtw_hostapd_acs_dump_survey,
 #endif
-#if defined(CPTCFG_VERSION) || (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) \
-    || defined(CONFIG_KERNEL_PATCH_EXTERNAL_AUTH)
 	.external_auth = cfg80211_rtw_external_auth,
-#endif
 };
 
 struct wiphy *rtw_wiphy_alloc(_adapter *padapter, struct device *dev)
@@ -9976,9 +9611,7 @@ int rtw_wiphy_register(struct wiphy *wiphy)
 {
 	RTW_INFO(FUNC_WIPHY_FMT"\n", FUNC_WIPHY_ARG(wiphy));
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)) || defined(RTW_VENDOR_EXT_SUPPORT)
 	rtw_cfgvendor_attach(wiphy);
-#endif
 
 	rtw_regd_init(wiphy);
 
@@ -10102,7 +9735,6 @@ void rtw_wdev_unregister(struct wireless_dev *wdev)
 
 	rtw_cfg80211_indicate_scan_done(adapter, _TRUE);
 
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)) || defined(COMPAT_KERNEL_RELEASE)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 2)
 	if (wdev->current_bss) {
 #else
@@ -10111,7 +9743,6 @@ void rtw_wdev_unregister(struct wireless_dev *wdev)
 		RTW_INFO(FUNC_ADPT_FMT" clear current_bss by cfg80211_disconnected\n", FUNC_ADPT_ARG(adapter));
 		rtw_cfg80211_indicate_disconnect(adapter, 0, 1);
 	}
-	#endif
 
 	if (pwdev_priv->pmon_ndev) {
 		RTW_INFO("%s, unregister monitor interface\n", __func__);
