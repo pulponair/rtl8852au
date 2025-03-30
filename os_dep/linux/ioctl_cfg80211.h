@@ -19,11 +19,7 @@
 #define RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT	BIT1
 
 #ifndef RTW_CFG80211_BLOCK_STA_DISCON_EVENT
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0))
 #define RTW_CFG80211_BLOCK_STA_DISCON_EVENT (RTW_CFG80211_BLOCK_DISCON_WHEN_CONNECT)
-#else
-#define RTW_CFG80211_BLOCK_STA_DISCON_EVENT (RTW_CFG80211_BLOCK_DISCON_WHEN_CONNECT | RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT)
-#endif
 #endif
 
 #if defined(RTW_USE_CFG80211_STA_EVENT)
@@ -94,7 +90,7 @@
 	#error "RTW_DEDICATED_P2P_DEVICE can't be enabled when RTW_P2P_GROUP_INTERFACE is disabled\n"
 #endif
 
-#if defined(RTW_DEDICATED_P2P_DEVICE) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
+#if defined(RTW_DEDICATED_P2P_DEVICE)
 	#error "RTW_DEDICATED_P2P_DEVICE can't be enabled when kernel < 3.7.0\n"
 #endif
 
@@ -369,75 +365,21 @@ void rtw_cfg80211_init_rfkill(struct wiphy *wiphy);
 void rtw_cfg80211_deinit_rfkill(struct wiphy *wiphy);
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0))  && !defined(COMPAT_KERNEL_RELEASE)
-#define rtw_cfg80211_rx_mgmt(wdev, freq, sig_dbm, buf, len, gfp) cfg80211_rx_mgmt(wdev_to_ndev(wdev), freq, buf, len, gfp)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
-#define rtw_cfg80211_rx_mgmt(wdev, freq, sig_dbm, buf, len, gfp) cfg80211_rx_mgmt(wdev_to_ndev(wdev), freq, sig_dbm, buf, len, gfp)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0))
-#define rtw_cfg80211_rx_mgmt(wdev, freq, sig_dbm, buf, len, gfp) cfg80211_rx_mgmt(wdev, freq, sig_dbm, buf, len, gfp)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(3 , 18 , 0))
-#define rtw_cfg80211_rx_mgmt(wdev , freq , sig_dbm , buf , len , gfp) cfg80211_rx_mgmt(wdev , freq , sig_dbm , buf , len , 0 , gfp)
-#else
 #define rtw_cfg80211_rx_mgmt(wdev , freq , sig_dbm , buf , len , gfp) cfg80211_rx_mgmt(wdev , freq , sig_dbm , buf , len , 0)
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0))  && !defined(COMPAT_KERNEL_RELEASE)
-#define rtw_cfg80211_send_rx_assoc(adapter, bss, buf, len) cfg80211_send_rx_assoc((adapter)->pnetdev, buf, len)
-#else
 #define rtw_cfg80211_send_rx_assoc(adapter, bss, buf, len) cfg80211_send_rx_assoc((adapter)->pnetdev, bss, buf, len)
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
-#define rtw_cfg80211_mgmt_tx_status(wdev, cookie, buf, len, ack, gfp) cfg80211_mgmt_tx_status(wdev_to_ndev(wdev), cookie, buf, len, ack, gfp)
-#else
 #define rtw_cfg80211_mgmt_tx_status(wdev, cookie, buf, len, ack, gfp) cfg80211_mgmt_tx_status(wdev, cookie, buf, len, ack, gfp)
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
-#define rtw_cfg80211_ready_on_channel(wdev, cookie, chan, channel_type, duration, gfp)  cfg80211_ready_on_channel(wdev_to_ndev(wdev), cookie, chan, channel_type, duration, gfp)
-#define rtw_cfg80211_remain_on_channel_expired(wdev, cookie, chan, chan_type, gfp) cfg80211_remain_on_channel_expired(wdev_to_ndev(wdev), cookie, chan, chan_type, gfp)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
-#define rtw_cfg80211_ready_on_channel(wdev, cookie, chan, channel_type, duration, gfp)  cfg80211_ready_on_channel(wdev, cookie, chan, channel_type, duration, gfp)
-#define rtw_cfg80211_remain_on_channel_expired(wdev, cookie, chan, chan_type, gfp) cfg80211_remain_on_channel_expired(wdev, cookie, chan, chan_type, gfp)
-#else
 #define rtw_cfg80211_ready_on_channel(wdev, cookie, chan, channel_type, duration, gfp)  cfg80211_ready_on_channel(wdev, cookie, chan, duration, gfp)
 #define rtw_cfg80211_remain_on_channel_expired(wdev, cookie, chan, chan_type, gfp) cfg80211_remain_on_channel_expired(wdev, cookie, chan, gfp)
-#endif
-
 #define rtw_cfg80211_connect_result(wdev, bssid, req_ie, req_ie_len, resp_ie, resp_ie_len, status, gfp) cfg80211_connect_result(wdev_to_ndev(wdev), bssid, req_ie, req_ie_len, resp_ie, resp_ie_len, status, gfp)
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
-#define rtw_cfg80211_disconnected(wdev, reason, ie, ie_len, locally_generated, gfp) cfg80211_disconnected(wdev_to_ndev(wdev), reason, ie, ie_len, gfp)
-#else
 #define rtw_cfg80211_disconnected(wdev, reason, ie, ie_len, locally_generated, gfp) cfg80211_disconnected(wdev_to_ndev(wdev), reason, ie, ie_len, locally_generated, gfp)
-#endif
 
 #ifdef CONFIG_RTW_80211R
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
 #define rtw_cfg80211_ft_event(adapter, parm)  cfg80211_ft_event((adapter)->pnetdev, parm)
-#else
-	#error "Cannot support FT for KERNEL_VERSION < 3.10\n"
-#endif
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
 #define rtw_cfg80211_notify_new_peer_candidate(wdev, addr, ie, ie_len, sig_dbm, gfp) cfg80211_notify_new_peer_candidate(wdev_to_ndev(wdev), addr, ie, ie_len, sig_dbm, gfp)
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
-#define rtw_cfg80211_notify_new_peer_candidate(wdev, addr, ie, ie_len, sig_dbm, gfp) cfg80211_notify_new_peer_candidate(wdev_to_ndev(wdev), addr, ie, ie_len, gfp)
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, u8 ch, u8 bw, u8 offset, u8 ht, bool started);
-#endif
-
-#if !defined(CPTCFG_VERSION) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
-#define NL80211_BAND_2GHZ IEEE80211_BAND_2GHZ
-#define NL80211_BAND_5GHZ IEEE80211_BAND_5GHZ
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
-#define NL80211_BAND_60GHZ IEEE80211_BAND_60GHZ
-#endif
-#define NUM_NL80211_BANDS IEEE80211_NUM_BANDS
-#endif
 
 #define rtw_band_to_nl80211_band(band) \
 	(band == BAND_ON_24G) ? NL80211_BAND_2GHZ : \
