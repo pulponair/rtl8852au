@@ -30,53 +30,10 @@ inline struct proc_dir_entry *get_rtw_drv_proc(void)
 
 #define RTW_PROC_NAME DRV_NAME
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
-#define file_inode(file) ((file)->f_dentry->d_inode)
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0))
-#define PDE_DATA(inode) PDE((inode))->data
-#define proc_get_parent_data(inode) PDE((inode))->parent->data
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
-#define get_proc_net proc_net
-#else
-#define get_proc_net init_net.proc_net
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0))
-int single_open_size(struct file *file, int (*show)(struct seq_file *, void *),
-		void *data, size_t size)
-{
-	char *buf = kmalloc(size, GFP_KERNEL);
-	int ret;
-	if (!buf)
-		return -ENOMEM;
-	ret = single_open(file, show, data);
-	if (ret) {
-		kfree(buf);
-		return ret;
-	}
-	((struct seq_file *)file->private_data)->buf = buf;
-	((struct seq_file *)file->private_data)->size = size;
-	return 0;
-}
-#endif
-
 inline struct proc_dir_entry *rtw_proc_create_dir(const char *name, struct proc_dir_entry *parent, void *data)
 {
 	struct proc_dir_entry *entry;
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
 	entry = proc_mkdir_data(name, S_IRUGO | S_IXUGO, parent, data);
-#else
-	/* entry = proc_mkdir_mode(name, S_IRUGO|S_IXUGO, parent); */
-	entry = proc_mkdir(name, parent);
-	if (entry)
-		entry->data = data;
-#endif
-
 	return entry;
 }
 
@@ -84,17 +41,7 @@ inline struct proc_dir_entry *rtw_proc_create_entry(const char *name, struct pro
 	const struct rtw_proc_ops *fops, void * data)
 {
 	struct proc_dir_entry *entry;
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26))
 	entry = proc_create_data(name,  S_IFREG | S_IRUGO | S_IWUGO, parent, fops, data);
-#else
-	entry = create_proc_entry(name, S_IFREG | S_IRUGO | S_IWUGO, parent);
-	if (entry) {
-		entry->data = data;
-		entry->proc_fops = fops;
-	}
-#endif
-
 	return entry;
 }
 
