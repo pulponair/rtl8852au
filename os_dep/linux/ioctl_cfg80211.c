@@ -5180,7 +5180,7 @@ static int cfg80211_rtw_stop_ap(struct wiphy *wiphy, struct net_device *ndev, un
 	rtw_stop_ap_cmd(adapter, RTW_CMDF_WAIT_ACK);
 	return 0;
 }
-#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)) */
+
 
 #if CONFIG_RTW_MACADDR_ACL 
 static int cfg80211_rtw_set_mac_acl(struct wiphy *wiphy, struct net_device *ndev,
