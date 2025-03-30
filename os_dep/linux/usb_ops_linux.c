@@ -162,8 +162,6 @@ exit:
 
 
 
-#if (KERNEL_VERSION(2, 5, 0) > LINUX_VERSION_CODE) ||\
-	(KERNEL_VERSION(2, 6, 18) < LINUX_VERSION_CODE)
 /*#define _usbctrl_vendorreq_async_callback(urb, regs)\*/
 	/*_usbctrl_vendorreq_async_callback(urb)*/
 /*#define usb_bulkout_zero_complete(purb, regs)\*/
@@ -174,7 +172,7 @@ exit:
 	rtw_usb_read_port_complete(purb)
 #define rtw_usb_read_interrupt_complete(purb, regs)\
 	rtw_usb_read_interrupt_complete(purb)
-#endif
+
 
 static unsigned int bulkid2pipe(struct dvobj_priv *pdvobj, u32 addr, u8 bulk_out)
 {

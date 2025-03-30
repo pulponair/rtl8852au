@@ -235,17 +235,14 @@ void dump_os_queue(void *sel, _adapter *padapter)
 {
 	struct net_device *ndev = padapter->pnetdev;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
+
 	int i;
 
 	for (i = 0; i < 4; i++) {
 		RTW_PRINT_SEL(sel, "os_queue[%d]:%s\n"
 			, i, __netif_subqueue_stopped(ndev, i) ? "stopped" : "waked");
 	}
-#else
-	RTW_PRINT_SEL(sel, "os_queue:%s\n"
-		      , netif_queue_stopped(ndev) ? "stopped" : "waked");
-#endif
+
 }
 
 #define WMM_XMIT_THRESHOLD	(NR_XMITFRAME*2/5)
@@ -344,46 +341,28 @@ void rtw_os_xmit_schedule(_adapter *padapter)
 
 void rtw_os_check_wakup_queue(_adapter *padapter, u16 os_qid)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	if (rtw_os_need_wake_queue(padapter, os_qid)) {
 		if (DBG_DUMP_OS_QUEUE_CTL)
 			RTW_INFO(FUNC_ADPT_FMT": netif_wake_subqueue[%d]\n", FUNC_ADPT_ARG(padapter), os_qid);
 		netif_wake_subqueue(padapter->pnetdev, os_qid);
 	}
-#else
-	if (rtw_os_need_wake_queue(padapter, 0)) {
-		if (DBG_DUMP_OS_QUEUE_CTL)
-			RTW_INFO(FUNC_ADPT_FMT": netif_wake_queue\n", FUNC_ADPT_ARG(padapter));
-		netif_wake_queue(padapter->pnetdev);
-	}
-#endif
 }
 
 bool rtw_os_check_stop_queue(_adapter *padapter, u16 os_qid)
 {
 	bool busy = _FALSE;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	if (rtw_os_need_stop_queue(padapter, os_qid)) {
 		if (DBG_DUMP_OS_QUEUE_CTL)
 			RTW_INFO(FUNC_ADPT_FMT": netif_stop_subqueue[%d]\n", FUNC_ADPT_ARG(padapter), os_qid);
 		netif_stop_subqueue(padapter->pnetdev, os_qid);
 		busy = _TRUE;
 	}
-#else
-	if (rtw_os_need_stop_queue(padapter, 0)) {
-		if (DBG_DUMP_OS_QUEUE_CTL)
-			RTW_INFO(FUNC_ADPT_FMT": netif_stop_queue\n", FUNC_ADPT_ARG(padapter));
-		rtw_netif_stop_queue(padapter->pnetdev);
-		busy = _TRUE;
-	}
-#endif
 	return busy;
 }
 
 void rtw_os_wake_queue_at_free_stainfo(_adapter *padapter, int *qcnt_freed)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	int i;
 
 	for (i = 0; i < 4; i++) {
@@ -396,15 +375,6 @@ void rtw_os_wake_queue_at_free_stainfo(_adapter *padapter, int *qcnt_freed)
 			netif_wake_subqueue(padapter->pnetdev, i);
 		}
 	}
-#else
-	if (qcnt_freed[0] || qcnt_freed[1] || qcnt_freed[2] || qcnt_freed[3]) {
-		if (rtw_os_need_wake_queue(padapter, 0)) {
-			if (DBG_DUMP_OS_QUEUE_CTL)
-				RTW_INFO(FUNC_ADPT_FMT": netif_wake_queue\n", FUNC_ADPT_ARG(padapter));
-			netif_wake_queue(padapter->pnetdev);
-		}
-	}
-#endif
 }
 
 int _rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
@@ -433,9 +403,7 @@ int _rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
 		goto drop_packet;
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	os_qid = skb_get_queue_mapping(pkt);
-#endif
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_TX
 	if (skb_shinfo(skb)->gso_size) {
@@ -484,25 +452,8 @@ exit:
 	return 0;
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0))
-/* copy from skbuff.c to be compatible with old kernel */
-static void kfree_skb_list(struct sk_buff *segs)
-{
-	while (segs) {
-		struct sk_buff *next = segs->next;
-
-		kfree_skb(segs);
-		segs = next;
-	}
-}
-#endif
-
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32))
 netdev_tx_t rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
-#else
-int rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
-#endif
+
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 	struct	mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
@@ -510,9 +461,7 @@ int rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
 
 	if (pkt) {
 		if (check_fwstate(pmlmepriv, WIFI_MONITOR_STATE) == _TRUE) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
 			rtw_monitor_xmit_entry((struct sk_buff *)pkt, pnetdev);
-#endif
 		}
 		else {
 #ifdef CONFIG_RTW_NETIF_SG
@@ -538,11 +487,8 @@ int rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev)
 
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32))
 	return (ret == 0) ? NETDEV_TX_OK : NETDEV_TX_BUSY;
-#else
-	return ret;
-#endif
+
 }
 
 
@@ -605,9 +551,7 @@ int rtw_os_tx(struct sk_buff *pkt, _nic_hdl pnetdev)
 
 	PHLTX_LOG;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	os_qid = skb_get_queue_mapping(pkt);
-#endif
 
 	PHLTX_LOG;
 	if (rtw_core_tx(padapter, &pkt, NULL, os_qid) == FAIL)
