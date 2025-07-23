@@ -187,6 +187,9 @@ else
 	HAL = phl
 endif
 
+DRV_PATH = $(TopDIR)
+
+
 ########### HAL_RTL8852A #################################
 ifeq ($(CONFIG_RTL8852A), y)
 IC_NAME := rtl8852a
@@ -674,4 +677,3 @@ clean:
 	rm -fr *.mod.c *.mod *.o .*.cmd *.ko *~
 	rm -fr .tmp_versions
 endif
-
