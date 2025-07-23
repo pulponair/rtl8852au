@@ -150,7 +150,6 @@ CONFIG_ROAMING_FLAG = 0x3
 
 ###################### Platform Related #######################
 CONFIG_PLATFORM_I386_PC = y
-CONFIG_PLATFORM_RTL8198D = n
 CONFIG_PLATFORM_ANDROID_X86 = n
 CONFIG_PLATFORM_ANDROID_INTEL_X86 = n
 CONFIG_PLATFORM_NV_TK1 = n
@@ -186,12 +185,6 @@ ifeq ($(CONFIG_HWSIM), y)
 	HAL = hal_sim
 else
 	HAL = phl
-endif
-
-ifeq ($(CONFIG_PLATFORM_RTL8198D), y)
-DRV_PATH = $(src)
-else
-DRV_PATH = $(TopDIR)
 endif
 
 ########### HAL_RTL8852A #################################
