@@ -11,10 +11,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kernel: [ "6.8", "6.13", "6.14" ]  # Basisversionen, ohne .0
+        kernel: [ "6.8", "6.13", "6.14" ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Prepare APT cache
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/apt/archives
+          key: apt-cache-${{ runner.os }}
+          restore-keys: |
+            apt-cache-
 
       - name: Prepare apt (disable man-db)
         run: |
@@ -25,27 +33,23 @@ jobs:
         run: |
           sudo apt-get install -y --no-install-recommends \
             build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
-            tar xz-utils ccache
+            tar xz-utils
 
           # Entferne Dokumentation & Manpages
           sudo rm -rf /usr/share/{man,doc,info,locale} || true
 
-      - name: Enable ccache
-        run: |
-          echo "CC='ccache gcc'" >> $GITHUB_ENV
-          echo "CXX='ccache g++'" >> $GITHUB_ENV
-
-      - name: Cache ccache
+      - name: Cache Kernel Headers
         uses: actions/cache@v3
         with:
-          path: ~/.ccache
-          key: ccache-${{ matrix.kernel }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ matrix.kernel }}-
+          path: kernel-headers-${{ matrix.kernel }}
+          key: kernel-headers-${{ matrix.kernel }}
+        id: kernel_cache
 
       - name: Download Kernel Headers (mainline)
+        if: steps.kernel_cache.outputs.cache-hit != 'true'
         run: |
-          KVER=${{ matrix.kernel }}
+          mkdir -p kernel-headers-${{ matrix.kernel }}
+          cd kernel-headers-${{ matrix.kernel }}
           KVER=${{ matrix.kernel }}
           BASE_URL="https://kernel.ubuntu.com/mainline/v${KVER}/amd64/"
           echo "Fetching kernel headers for $KVER from $BASE_URL"
@@ -53,7 +57,6 @@ jobs:
           INDEX=$(mktemp)
           curl -sSL "$BASE_URL" -o "$INDEX"
 
-          # Die richtigen Pakete finden
           HEADERS_ALL=$(grep -oP 'linux-headers-([^>]*)_all\.deb' "$INDEX" | head -n1)
           HEADERS_GENERIC=$(grep -oP 'linux-headers-([^>]*)-generic_([^>]*)_amd64.deb' "$INDEX" | head -n1)
 
@@ -67,7 +70,9 @@ jobs:
           wget -q ${BASE_URL}${HEADERS_ALL}
           wget -q ${BASE_URL}${HEADERS_GENERIC}
 
-          sudo dpkg -i linux-headers-*.deb
+      - name: Install Kernel Headers
+        run: |
+          sudo dpkg -i kernel-headers-${{ matrix.kernel }}/linux-headers-*.deb
 
       - name: Build Kernel Module
         run: |
@@ -75,6 +80,3 @@ jobs:
           echo "Building against kernel headers in $KSRC"
           make clean
           make -j$(nproc) KSRC="$KSRC"
-
-      - name: Show ccache stats
-        run: ccache -s
