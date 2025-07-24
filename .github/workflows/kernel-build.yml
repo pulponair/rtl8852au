@@ -54,8 +54,8 @@ jobs:
           curl -sSL "$BASE_URL" -o "$INDEX"
 
           # Die richtigen Pakete finden
-          HEADERS_ALL=$(grep -oP '>linux-headers-(.*)_all\.deb<\/a>' "$INDEX" | head -n1)
-          HEADERS_GENERIC=$(grep -oP '>linux-headers-(.*)_amd64.deb<\/a>' "$INDEX" | head -n1)
+          HEADERS_ALL=$(grep -oP 'linux-headers-([^>]*)_all\.deb' "$INDEX" | head -n1)
+          HEADERS_GENERIC=$(grep -oP 'linux-headers-([^>]*)-generic_([^>]*)_amd64.deb' "$INDEX" | head -n1)
 
           if [[ -z "$HEADERS_ALL" || -z "$HEADERS_GENERIC" ]]; then
             echo "Could not find headers for $KVER"
