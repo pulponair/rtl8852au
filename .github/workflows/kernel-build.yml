@@ -9,51 +9,64 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
         kernel: [ "6.8.0", "6.13.0", "6.14.0" ]
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Cache APT packages (build-essential, etc.)
-      - name: Cache APT packages
-        uses: actions/cache@v4
+      - name: Enable ccache
+        run: |
+          sudo apt update
+          sudo apt install -y ccache
+          echo "CC='ccache gcc'" >> $GITHUB_ENV
+          echo "CXX='ccache g++'" >> $GITHUB_ENV
+
+      - name: Cache ccache
+        uses: actions/cache@v3
         with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.ccache
+          key: ccache-${{ matrix.kernel }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-apt-
+            ccache-${{ matrix.kernel }}-
 
-      # Cache Kernel Headers
-      - name: Cache Kernel Headers
-        id: cache-headers
-        uses: actions/cache@v4
-        with:
-          path: /usr/src/linux-headers-${{ matrix.kernel }}-generic
-          key: ${{ runner.os }}-headers-${{ matrix.kernel }}
-
-      # Install Dependencies
-      - name: Install Dependencies
+      - name: Install Build Dependencies
         run: |
-          sudo rm -rf /var/lib/apt/lists/*
-          sudo apt-get clean
-          sudo apt-get update -o=Dpkg::Use-Pty=0
-          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends \
-            build-essential bc flex bison libelf-dev wget ca-certificates
+          sudo apt update
+          sudo apt install -y --no-install-recommends \
+            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
+            tar xz-utils ccache
 
-      # Install Mainline Kernel Headers if not cached
-      - name: Install Mainline Kernel Headers
-        if: steps.cache-headers.outputs.cache-hit != 'true'
+          # Platz sparen
+          sudo rm -rf /usr/share/doc /usr/share/man
+
+      - name: Download Kernel Headers
         run: |
-          KVER="${{ matrix.kernel }}"
-          wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64/linux-headers-${KVER}-generic_*_amd64.deb
-          wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64/linux-headers-${KVER}-*_all.deb
+          KVER=${{ matrix.kernel }}
+          BASE_URL="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64"
+
+          echo "Fetching kernel headers for $KVER from $BASE_URL"
+
+          HEADERS_ALL=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}-.*?all\.deb" | head -n1)
+          HEADERS_AMD64=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}-.*?amd64\.deb" | head -n1)
+
+          if [ -z "$HEADERS_ALL" ] || [ -z "$HEADERS_AMD64" ]; then
+            echo "Kernel headers not found for $KVER"
+            exit 1
+          fi
+
+          wget ${BASE_URL}/${HEADERS_ALL}
+          wget ${BASE_URL}/${HEADERS_AMD64}
           sudo dpkg -i linux-headers-${KVER}-*.deb
-          echo "KSRC=/usr/src/linux-headers-${KVER}-generic" >> $GITHUB_ENV
 
-      # Build
       - name: Build Kernel Module
         run: |
-          echo "Building against $KSRC"
+          KVER=${{ matrix.kernel }}
+          KSRC="/usr/src/linux-headers-${KVER}-generic"
+          echo "Building against kernel headers in $KSRC"
           make clean
           make -j$(nproc) KSRC="$KSRC"
+
+      - name: Show ccache statistics
+        run: ccache -s
