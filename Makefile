@@ -150,14 +150,6 @@ CONFIG_ROAMING_FLAG = 0x3
 
 ###################### Platform Related #######################
 CONFIG_PLATFORM_I386_PC = y
-CONFIG_PLATFORM_RTL8198D = n
-CONFIG_PLATFORM_ANDROID_X86 = n
-CONFIG_PLATFORM_ANDROID_INTEL_X86 = n
-CONFIG_PLATFORM_NV_TK1 = n
-CONFIG_PLATFORM_NV_TK1_UBUNTU = n
-CONFIG_PLATFORM_ARM_SUNxI = n
-CONFIG_PLATFORM_RTK1319 = n
-CONFIG_PLATFORM_AML_S905 = n
 
 ########### CUSTOMER ################################
 
@@ -188,11 +180,8 @@ else
 	HAL = phl
 endif
 
-ifeq ($(CONFIG_PLATFORM_RTL8198D), y)
-DRV_PATH = $(src)
-else
 DRV_PATH = $(TopDIR)
-endif
+
 
 ########### HAL_RTL8852A #################################
 ifeq ($(CONFIG_RTL8852A), y)
@@ -681,4 +670,3 @@ clean:
 	rm -fr *.mod.c *.mod *.o .*.cmd *.ko *~
 	rm -fr .tmp_versions
 endif
-

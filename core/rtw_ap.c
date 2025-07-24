@@ -3799,11 +3799,9 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 #ifdef CONFIG_IOCTL_CFG80211
 		#ifdef COMPAT_KERNEL_RELEASE
 		rtw_cfg80211_indicate_sta_disassoc(padapter, psta->phl_sta->mac_addr, reason);
-		#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && !defined(CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER)
+		#else
 		rtw_cfg80211_indicate_sta_disassoc(padapter, psta->phl_sta->mac_addr, reason);
-		#else /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && !defined(CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER) */
-		/* will call rtw_cfg80211_indicate_sta_disassoc() in cmd_thread for old API context */
-		#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && !defined(CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER) */
+		#endif
 #else
 		rtw_indicate_sta_disassoc_event(padapter, psta);
 #endif

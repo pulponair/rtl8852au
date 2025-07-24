@@ -18,11 +18,6 @@
 #include <rtw_mp.h>
 
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 27))
-#define  iwe_stream_add_event(a, b, c, d, e)  iwe_stream_add_event(b, c, d, e)
-#define  iwe_stream_add_point(a, b, c, d, e)  iwe_stream_add_point(b, c, d, e)
-#endif
-
 #ifdef CONFIG_80211N_HT
 extern int rtw_ht_enable;
 #endif
@@ -156,11 +151,7 @@ static void request_wps_pbc_event(_adapter *padapter)
 void rtw_request_wps_pbc_event(_adapter *padapter)
 {
 #ifdef RTK_DMP_PLATFORM
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 12))
 	kobject_uevent(&padapter->pnetdev->dev.kobj, KOBJ_NET_PBC);
-#else
-	kobject_hotplug(&padapter->pnetdev->class_dev.kobj, KOBJ_NET_PBC);
-#endif
 #else
 
 	if (padapter->pid[0] == 0) {
@@ -1333,12 +1324,10 @@ static int rtw_wx_set_mode(struct net_device *dev, struct iw_request_info *a,
 		dev->type = ARPHRD_IEEE80211; /* IEEE 802.11 : 801 */
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
+
 		dev->type = ARPHRD_IEEE80211_RADIOTAP; /* IEEE 802.11 + radiotap header : 803 */
 		RTW_INFO("set_mode = IW_MODE_MONITOR\n");
-#else
-		RTW_INFO("kernel version < 2.6.24 not support IW_MODE_MONITOR\n");
-#endif
+
 		break;
 #endif /* CONFIG_WIFI_MONITOR */
 	case IW_MODE_AUTO:
@@ -2945,7 +2934,6 @@ static int rtw_wx_set_auth(struct net_device *dev,
 
 	case IW_AUTH_80211_AUTH_ALG:
 
-#if defined(CONFIG_RTW_ANDROID) || 1
 		/*
 		 *  It's the starting point of a link layer connection using wpa_supplicant
 		*/
@@ -2962,7 +2950,6 @@ static int rtw_wx_set_auth(struct net_device *dev,
 			rtw_indicate_disconnect(padapter, 0, _FALSE);
 
 		}
-#endif
 
 
 		ret = wpa_set_auth_algs(dev, (u32)param->value);
@@ -8520,17 +8507,8 @@ static struct iw_statistics *rtw_get_wireless_stats(struct net_device *dev)
 		piwstats->qual.qual = tmp_qual;
 		piwstats->qual.noise = tmp_noise;
 	}
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 14))
+
 	piwstats->qual.updated = IW_QUAL_ALL_UPDATED ;/* |IW_QUAL_DBM; */
-#else
-#ifdef RTK_DMP_PLATFORM
-	/* IW_QUAL_DBM= 0x8, if driver use this flag, wireless extension will show value of dbm. */
-	/* remove this flag for show percentage 0~100 */
-	piwstats->qual.updated = 0x07;
-#else
-	piwstats->qual.updated = 0x0f;
-#endif
-#endif
 
 #ifdef CONFIG_SIGNAL_DISPLAY_DBM
 	piwstats->qual.updated = piwstats->qual.updated | IW_QUAL_DBM;
@@ -8544,7 +8522,7 @@ static struct iw_statistics *rtw_get_wireless_stats(struct net_device *dev)
 struct iw_handler_def rtw_handlers_def = {
 	.standard = rtw_handlers,
 	.num_standard = sizeof(rtw_handlers) / sizeof(iw_handler),
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)) || defined(CONFIG_WEXT_PRIV)
+#if  defined(CONFIG_WEXT_PRIV)
 	.private = rtw_private_handler,
 	.private_args = (struct iw_priv_args *)rtw_private_args,
 	.num_private = sizeof(rtw_private_handler) / sizeof(iw_handler),
@@ -8980,11 +8958,7 @@ static int rtw_ioctl_standard_wext_private(struct net_device *dev, struct ifreq 
 static int rtw_ioctl_wext_private(struct net_device *dev, struct ifreq *rq)
 {
 #ifdef CONFIG_COMPAT
-#if (KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE)
-	if (is_compat_task())
-#else
 	if (in_compat_syscall())
-#endif
 		return rtw_ioctl_compat_wext_private(dev, rq);
 	else
 #endif /* CONFIG_COMPAT */

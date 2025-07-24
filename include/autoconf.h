@@ -81,8 +81,7 @@
 	 * RTW_USE_CFG80211_STA_EVENT must be defiend!
 	 */
 	/* Set RTW_USE_CFG80211_STA_EVENT from Makefile */
-	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */
-	#define CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER
+	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */	
 	/* #define CONFIG_DEBUG_CFG80211 */
 	#define CONFIG_SET_SCAN_DENY_TIMER
 #endif
@@ -197,7 +196,6 @@
 	/* #define CONFIG_DBG_P2P */
 
 	#define CONFIG_P2P_PS
-	/* #define CONFIG_P2P_IPS */
 	#define CONFIG_P2P_OP_CHK_SOCIAL_CH
 	#define CONFIG_CFG80211_ONECHANNEL_UNDER_CONCURRENT  /* replace CONFIG_P2P_CHK_INVITE_CH_LIST flag */
 	/*#define CONFIG_P2P_INVITE_IOT*/
