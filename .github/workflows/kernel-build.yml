@@ -46,25 +46,26 @@ jobs:
       - name: Download Kernel Headers (mainline)
         run: |
           KVER=${{ matrix.kernel }}
+          KVER=${{ matrix.kernel }}
           BASE_URL="https://kernel.ubuntu.com/mainline/v${KVER}/amd64/"
           echo "Fetching kernel headers for $KVER from $BASE_URL"
 
           INDEX=$(mktemp)
           curl -sSL "$BASE_URL" -o "$INDEX"
 
-          # Header Pakete extrahieren
+          # Die richtigen Pakete finden
           HEADERS_ALL=$(grep -oP 'linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+_all\.deb' "$INDEX" | head -n1)
-          HEADERS_AMD64=$(grep -oP 'linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-generic_.*?amd64\.deb' "$INDEX" | head -n1)
+          HEADERS_GENERIC=$(grep -oP 'linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-generic_.*?amd64\.deb' "$INDEX" | head -n1)
 
-          if [[ -z "$HEADERS_ALL" || -z "$HEADERS_AMD64" ]]; then
+          if [[ -z "$HEADERS_ALL" || -z "$HEADERS_GENERIC" ]]; then
             echo "Could not find headers for $KVER"
             cat "$INDEX"
             exit 1
           fi
 
-          echo "Downloading: $HEADERS_ALL and $HEADERS_AMD64"
+          echo "Downloading: $HEADERS_ALL and $HEADERS_GENERIC"
           wget -q ${BASE_URL}${HEADERS_ALL}
-          wget -q ${BASE_URL}${HEADERS_AMD64}
+          wget -q ${BASE_URL}${HEADERS_GENERIC}
 
           sudo dpkg -i linux-headers-*.deb
 
