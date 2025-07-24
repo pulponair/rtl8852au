@@ -1,0 +1,46 @@
+name: Kernel Matrix Build (Custom Kernel Headers)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel: [6.8.12, 6.14.5]
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git wget curl bc flex bison openssl zstd xz tar
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and prepare Linux kernel headers
+        run: |
+          KVER=${{ matrix.kernel }}
+          echo "Downloading kernel $KVER"
+          wget https://cdn.kernel.org/pub/linux/kernel/v${KVER%%.*}.x/linux-$KVER.tar.xz
+          tar -xf linux-$KVER.tar.xz
+          cd linux-$KVER
+          make defconfig
+          make modules_prepare -j$(nproc)
+
+      - name: Build driver
+        run: |
+          KVER=${{ matrix.kernel }}
+          make KSRC=linux-$KVER -j$(nproc)
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8852au-${{ matrix.kernel }}
+          path: "*.ko"
