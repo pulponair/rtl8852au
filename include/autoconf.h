@@ -81,8 +81,7 @@
 	 * RTW_USE_CFG80211_STA_EVENT must be defiend!
 	 */
 	/* Set RTW_USE_CFG80211_STA_EVENT from Makefile */
-	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */
-	#define CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER
+	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */	
 	/* #define CONFIG_DEBUG_CFG80211 */
 	#define CONFIG_SET_SCAN_DENY_TIMER
 #endif
