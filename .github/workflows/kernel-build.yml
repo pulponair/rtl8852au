@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         kernel: [ "6.8.0-40-generic", "6.14.0-1-generic" ]
@@ -17,31 +18,25 @@ jobs:
 
       - name: Install Build Dependencies
         run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            build-essential bc flex bison libelf-dev wget ca-certificates
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends build-essential bc flex bison libelf-dev
+
+      - name: Cache Kernel Headers
+        id: cache-headers
+        uses: actions/cache@v3
+        with:
+          path: /usr/src/linux-headers-${{ matrix.kernel }}
+          key: kernel-headers-${{ matrix.kernel }}
 
       - name: Install Kernel Headers
+        if: steps.cache-headers.outputs.cache-hit != 'true'
         run: |
-          KVER="${{ matrix.kernel }}"
-          echo "Trying to install headers for $KVER"
+          echo "Kernel headers not found in cache. Installing..."
+          sudo apt-get install -y --no-install-recommends linux-headers-${{ matrix.kernel }}
 
-          if ! sudo apt-get install -y linux-headers-$KVER; then
-            echo "Headers for $KVER not found in apt repos. Trying mainline kernel..."
-            MAINLINE_VERSION=$(echo "$KVER" | cut -d'-' -f1)
-            URL="https://kernel.ubuntu.com/~kernel-ppa/mainline/v$MAINLINE_VERSION/amd64"
-            echo "Fetching headers from $URL"
-
-            wget -q $URL/linux-headers-$KVER_${MAINLINE_VERSION}-*.deb
-            wget -q $URL/linux-headers-${MAINLINE_VERSION}-generic_*.deb
-            wget -q $URL/linux-image-${MAINLINE_VERSION}-generic_*.deb
-
-            sudo dpkg -i *.deb || true
-          fi
-
-      - name: Build Kernel Module
+      - name: Build Module
         run: |
           KSRC="/usr/src/linux-headers-${{ matrix.kernel }}"
-          echo "Building against kernel headers in $KSRC"
+          echo "Building with headers from $KSRC"
           make clean
           make -j$(nproc) KSRC="$KSRC"
