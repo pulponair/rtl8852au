@@ -16,47 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare APT Cache Dir
-        run: |
-          mkdir -p ./apt-cache
-
-      - name: Restore APT Cache
-        uses: actions/cache@v3
-        with:
-          path: ./apt-cache
-          key: apt-cache-${{ runner.os }}
-          restore-keys: |
-            apt-cache-
-
       - name: Prepare apt (disable man-db)
         run: |
-          sudo rm -rf /usr/share/{man,doc,info,locale} || true
           sudo apt-get purge -y man-db || true
-          sudo cp -r ./apt-cache/* /var/cache/apt/archives/ || true
           sudo apt-get update
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y --download-only \
-            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
-            tar xz-utils
-          sudo cp -r /var/cache/apt/archives/* ./apt-cache/ || true
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
             tar xz-utils
 
-      - name: Cache Kernel Headers
-        uses: actions/cache@v3
-        with:
-          path: kernel-headers-${{ matrix.kernel }}
-          key: kernel-headers-${{ matrix.kernel }}
-        id: kernel_cache
+          # Entferne Dokumentation & Manpages
+          sudo rm -rf /usr/share/{man,doc,info,locale} || true
 
       - name: Download Kernel Headers (mainline)
-        if: steps.kernel_cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p kernel-headers-${{ matrix.kernel }}
-          cd kernel-headers-${{ matrix.kernel }}
           KVER=${{ matrix.kernel }}
           BASE_URL="https://kernel.ubuntu.com/mainline/v${KVER}/amd64/"
           echo "Fetching kernel headers for $KVER from $BASE_URL"
@@ -77,9 +52,7 @@ jobs:
           wget -q ${BASE_URL}${HEADERS_ALL}
           wget -q ${BASE_URL}${HEADERS_GENERIC}
 
-      - name: Install Kernel Headers
-        run: |
-          sudo dpkg -i kernel-headers-${{ matrix.kernel }}/linux-headers-*.deb
+          sudo dpkg -i linux-headers-*.deb
 
       - name: Build Kernel Module
         run: |
