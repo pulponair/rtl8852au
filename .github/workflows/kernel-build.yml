@@ -8,35 +8,52 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
     strategy:
       matrix:
-        kernel: [ "6.8.0-40-generic", "6.14.0-1-generic" ]
+        kernel: [ "6.8.0", "6.13.0", "6.14.0" ]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends build-essential bc flex bison libelf-dev
+      # Cache APT packages (build-essential, etc.)
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
 
+      # Cache Kernel Headers
       - name: Cache Kernel Headers
         id: cache-headers
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: /usr/src/linux-headers-${{ matrix.kernel }}
-          key: kernel-headers-${{ matrix.kernel }}
+          path: /usr/src/linux-headers-${{ matrix.kernel }}-generic
+          key: ${{ runner.os }}-headers-${{ matrix.kernel }}
 
-      - name: Install Kernel Headers
+      # Install Dependencies
+      - name: Install Dependencies
+        run: |
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo apt-get clean
+          sudo apt-get update -o=Dpkg::Use-Pty=0
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends \
+            build-essential bc flex bison libelf-dev wget ca-certificates
+
+      # Install Mainline Kernel Headers if not cached
+      - name: Install Mainline Kernel Headers
         if: steps.cache-headers.outputs.cache-hit != 'true'
         run: |
-          echo "Kernel headers not found in cache. Installing..."
-          sudo apt-get install -y --no-install-recommends linux-headers-${{ matrix.kernel }}
+          KVER="${{ matrix.kernel }}"
+          wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64/linux-headers-${KVER}-generic_*_amd64.deb
+          wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64/linux-headers-${KVER}-*_all.deb
+          sudo dpkg -i linux-headers-${KVER}-*.deb
+          echo "KSRC=/usr/src/linux-headers-${KVER}-generic" >> $GITHUB_ENV
 
-      - name: Build Module
+      # Build
+      - name: Build Kernel Module
         run: |
-          KSRC="/usr/src/linux-headers-${{ matrix.kernel }}"
-          echo "Building with headers from $KSRC"
+          echo "Building against $KSRC"
           make clean
           make -j$(nproc) KSRC="$KSRC"
