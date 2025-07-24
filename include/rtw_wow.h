@@ -17,13 +17,8 @@
 
 #ifdef CONFIG_WOWLAN
 
-	#ifdef CONFIG_PLATFORM_ANDROID_INTEL_X86
-		/* TCP/ICMP/UDP multicast with specific IP addr */
-		#define DEFAULT_PATTERN_NUM 4
-	#else
 		/* TCP/ICMP */
 		#define DEFAULT_PATTERN_NUM 3
-	#endif
 
 #define MAX_WKFM_CAM_NUM	12
 

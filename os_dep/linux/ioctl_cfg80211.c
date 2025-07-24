@@ -817,10 +817,6 @@ struct cfg80211_bss *rtw_cfg80211_inform_bss(_adapter *padapter, struct wlan_net
 
 	len += pnetwork->network.IELength;
 
-	#if defined(CONFIG_P2P) && 0
-	if(rtw_get_p2p_ie(pnetwork->network.IEs+12, pnetwork->network.IELength-12, NULL, NULL))
-		RTW_INFO("%s, got p2p_ie\n", __func__);
-	#endif
 
 #if 1
 	bss = cfg80211_inform_bss_frame(wiphy, notify_channel, (struct ieee80211_mgmt *)pbuf,

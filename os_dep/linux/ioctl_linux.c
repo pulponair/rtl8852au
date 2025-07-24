@@ -2934,7 +2934,6 @@ static int rtw_wx_set_auth(struct net_device *dev,
 
 	case IW_AUTH_80211_AUTH_ALG:
 
-#if defined(CONFIG_RTW_ANDROID) || 1
 		/*
 		 *  It's the starting point of a link layer connection using wpa_supplicant
 		*/
@@ -2951,7 +2950,6 @@ static int rtw_wx_set_auth(struct net_device *dev,
 			rtw_indicate_disconnect(padapter, 0, _FALSE);
 
 		}
-#endif
 
 
 		ret = wpa_set_auth_algs(dev, (u32)param->value);
