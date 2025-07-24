@@ -11,15 +11,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kernel: [ "6.8.0", "6.13.0", "6.14.0" ]
+        kernel: [ "6.8", "6.13", "6.14" ]  # Basisversionen, ohne .0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare apt (disable man-db)
+        run: |
+          sudo apt-get purge -y man-db || true
+          sudo apt-get update
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
+            tar xz-utils ccache
+
+          # Entferne Dokumentation & Manpages
+          sudo rm -rf /usr/share/{man,doc,info,locale} || true
+
       - name: Enable ccache
         run: |
-          sudo apt update
-          sudo apt install -y ccache
           echo "CC='ccache gcc'" >> $GITHUB_ENV
           echo "CXX='ccache g++'" >> $GITHUB_ENV
 
@@ -31,42 +43,27 @@ jobs:
           restore-keys: |
             ccache-${{ matrix.kernel }}-
 
-      - name: Install Build Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y --no-install-recommends \
-            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
-            tar xz-utils ccache
-
-          # Platz sparen
-          sudo rm -rf /usr/share/doc /usr/share/man
-
-      - name: Download Kernel Headers
+      - name: Download Kernel Headers (mainline)
         run: |
           KVER=${{ matrix.kernel }}
           BASE_URL="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${KVER}/amd64"
-
           echo "Fetching kernel headers for $KVER from $BASE_URL"
 
-          HEADERS_ALL=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}-.*?all\.deb" | head -n1)
-          HEADERS_AMD64=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}-.*?amd64\.deb" | head -n1)
+          # Dynamisch die passenden Header-Dateien finden
+          HEADERS_ALL=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}\.[0-9]+-.*?all\.deb" | head -n1)
+          HEADERS_AMD64=$(curl -s ${BASE_URL}/ | grep -oP "linux-headers-${KVER}\.[0-9]+-.*?generic_.*?amd64\.deb" | head -n1)
 
-          if [ -z "$HEADERS_ALL" ] || [ -z "$HEADERS_AMD64" ]; then
-            echo "Kernel headers not found for $KVER"
-            exit 1
-          fi
-
+          echo "Found headers: $HEADERS_ALL and $HEADERS_AMD64"
           wget ${BASE_URL}/${HEADERS_ALL}
           wget ${BASE_URL}/${HEADERS_AMD64}
-          sudo dpkg -i linux-headers-${KVER}-*.deb
+          sudo dpkg -i linux-headers-${KVER}.*.deb
 
       - name: Build Kernel Module
         run: |
-          KVER=${{ matrix.kernel }}
-          KSRC="/usr/src/linux-headers-${KVER}-generic"
+          KSRC=$(ls -d /usr/src/linux-headers-* | grep generic | head -n1)
           echo "Building against kernel headers in $KSRC"
           make clean
           make -j$(nproc) KSRC="$KSRC"
 
-      - name: Show ccache statistics
+      - name: Show ccache stats
         run: ccache -s
