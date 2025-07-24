@@ -1,9 +1,3 @@
-## Build Status
-![Kernel 6.8](https://github.com/pulponair/rtl8852au/actions/workflows/kernel-build.yml/badge.svg?branch=develop&label=Kernel%206.8)
-![Kernel 6.13](https://github.com/pulponair/rtl8852au/actions/workflows/kernel-build.yml/badge.svg?branch=develop&label=Kernel%206.13)
-![Kernel 6.14](https://github.com/pulponair/rtl8852au/actions/workflows/kernel-build.yml/badge.svg?branch=develop&label=Kernel%206.14)
-
-
 
 
 ---
