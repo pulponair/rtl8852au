@@ -16,27 +16,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare APT cache
+      - name: Prepare APT Cache Dir
+        run: |
+          mkdir -p ./apt-cache
+
+      - name: Restore APT Cache
         uses: actions/cache@v3
         with:
-          path: /var/cache/apt/archives
+          path: ./apt-cache
           key: apt-cache-${{ runner.os }}
           restore-keys: |
             apt-cache-
 
       - name: Prepare apt (disable man-db)
         run: |
+          sudo rm -rf /usr/share/{man,doc,info,locale} || true
           sudo apt-get purge -y man-db || true
+          sudo cp -r ./apt-cache/* /var/cache/apt/archives/ || true
           sudo apt-get update
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get install -y --download-only \
             build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
             tar xz-utils
-
-          # Entferne Dokumentation & Manpages
-          sudo rm -rf /usr/share/{man,doc,info,locale} || true
+          sudo cp -r /var/cache/apt/archives/* ./apt-cache/ || true
+          sudo apt-get install -y \
+            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
+            tar xz-utils
 
       - name: Cache Kernel Headers
         uses: actions/cache@v3
