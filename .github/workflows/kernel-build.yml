@@ -1,0 +1,62 @@
+name: Build Kernel Module
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel: [ "6.8", "6.13", "6.14" ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare apt (disable man-db)
+        run: |
+          sudo apt-get purge -y man-db || true
+          sudo apt-get update
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc flex bison libelf-dev libssl-dev wget curl ca-certificates \
+            tar xz-utils
+
+          # Entferne Dokumentation & Manpages
+          sudo rm -rf /usr/share/{man,doc,info,locale} || true
+
+      - name: Download Kernel Headers (mainline)
+        run: |
+          KVER=${{ matrix.kernel }}
+          BASE_URL="https://kernel.ubuntu.com/mainline/v${KVER}/amd64/"
+          echo "Fetching kernel headers for $KVER from $BASE_URL"
+
+          INDEX=$(mktemp)
+          curl -sSL "$BASE_URL" -o "$INDEX"
+
+          HEADERS_ALL=$(grep -oP 'linux-headers-([^>]*)_all\.deb' "$INDEX" | head -n1)
+          HEADERS_GENERIC=$(grep -oP 'linux-headers-([^>]*)-generic_([^>]*)_amd64.deb' "$INDEX" | head -n1)
+
+          if [[ -z "$HEADERS_ALL" || -z "$HEADERS_GENERIC" ]]; then
+            echo "Could not find headers for $KVER"
+            cat "$INDEX"
+            exit 1
+          fi
+
+          echo "Downloading: $HEADERS_ALL and $HEADERS_GENERIC"
+          wget -q ${BASE_URL}${HEADERS_ALL}
+          wget -q ${BASE_URL}${HEADERS_GENERIC}
+
+          sudo dpkg -i linux-headers-*.deb
+
+      - name: Build Kernel Module
+        run: |
+          KSRC=$(ls -d /usr/src/linux-headers-* | grep generic | head -n1)
+          echo "Building against kernel headers in $KSRC"
+          make clean
+          make -j$(nproc) KSRC="$KSRC"
