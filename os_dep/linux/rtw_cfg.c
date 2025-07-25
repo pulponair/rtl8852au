@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _OS_INTFS_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 /* module param defaults */
 int rtw_chip_version = 0x00;
