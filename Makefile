@@ -614,6 +614,7 @@ include $(src)/phl/phl.mk
 obj-$(CONFIG_RTL8852AU) := $(MODULE_NAME).o
 obj-$(CPTCFG_RTL8852AE) := $(MODULE_NAME).o
 $(MODULE_NAME)-y = $(OBJS)
+ccflags-y := $(EXTRA_CFLAGS)
 
 else
 
@@ -622,7 +623,7 @@ export CONFIG_RTL8852AU = m
 SUBARCH := $(shell uname -m | sed -e "s/i.86/i386/; s/ppc.*/powerpc/; s/armv.l/arm/; s/aarch64/arm64/; s/loong.*64/loongarch/;")
 ARCH ?= $(SUBARCH)
 
-ccflags-y += $(EXTRA_CFLAGS) 
+
 
 
 all: modules
