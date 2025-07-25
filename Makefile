@@ -19,6 +19,7 @@ GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
 
 EXTRA_CFLAGS += -I$(src)/include
 
+
 EXTRA_LDFLAGS += --strip-debug
 
 CONFIG_AUTOCFG_CP = n
@@ -613,6 +614,7 @@ include $(src)/phl/phl.mk
 obj-$(CONFIG_RTL8852AU) := $(MODULE_NAME).o
 obj-$(CPTCFG_RTL8852AE) := $(MODULE_NAME).o
 $(MODULE_NAME)-y = $(OBJS)
+ccflags-y := $(EXTRA_CFLAGS)
 
 else
 
@@ -620,6 +622,9 @@ export CONFIG_RTL8852AU = m
 
 SUBARCH := $(shell uname -m | sed -e "s/i.86/i386/; s/ppc.*/powerpc/; s/armv.l/arm/; s/aarch64/arm64/; s/loong.*64/loongarch/;")
 ARCH ?= $(SUBARCH)
+
+
+
 
 all: modules
 

@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _OSDEP_SERVICE_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_HWSIM
 #include "rtw_hwsim_intf.h"
