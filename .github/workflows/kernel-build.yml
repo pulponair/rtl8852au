@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kernel: [ "6.8", "6.13", "6.14" ]
+        kernel: [ "6.8", "6.13", "6.14", "6.15" ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
