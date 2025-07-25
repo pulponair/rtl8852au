@@ -18,7 +18,6 @@ EXTRA_CFLAGS += -Wno-unused
 GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
 
 EXTRA_CFLAGS += -I$(src)/include
-ccflags-y += -I$(src)/include
 
 
 EXTRA_LDFLAGS += --strip-debug
@@ -622,6 +621,9 @@ export CONFIG_RTL8852AU = m
 
 SUBARCH := $(shell uname -m | sed -e "s/i.86/i386/; s/ppc.*/powerpc/; s/armv.l/arm/; s/aarch64/arm64/; s/loong.*64/loongarch/;")
 ARCH ?= $(SUBARCH)
+
+ccflags-y += $(EXTRA_CFLAGS) 
+
 
 all: modules
 
