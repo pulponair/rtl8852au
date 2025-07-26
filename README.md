@@ -17,7 +17,6 @@ After Larry's passing, this fork (maintained at [pulponair/rtl8852au](https://gi
 * Fixed various array out-of-bounds issues and improved overall code safety.
 * Improved USB initialization and streamlined module structure.
 * Extended station information and debug logging.
-* DKMS installation improved for automatic kernel rebuilds.
 * Removed legacy Realtek code for a cleaner, more maintainable driver.
 
 ---
