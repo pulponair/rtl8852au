@@ -2,7 +2,7 @@
 
 [![Kernel 6.x CI](https://github.com/pulponair/rtl8852au/actions/workflows/kernel-build.yml/badge.svg?branch=develop)](https://github.com/pulponair/rtl8852au/actions)
 
-> **CI Status:** Automated builds are tested against Linux kernels **6.8**, **6.13**, **6.14**, and **6.15**.
+> **CI Status:** Automated builds are tested against Linux kernels **6.8**, **6.13**, **6.14**, **6.15** and **6.16**
 
 This project is a community-maintained fork of the original Realtek USB WiFi driver
 **RTL8852AU\_WiFi\_linux\_v1.15.0.1-0-g487ee886.20210714**,
@@ -13,7 +13,7 @@ After Larry's passing, this fork (maintained at [pulponair/rtl8852au](https://gi
 
 ## Key Improvements
 
-* Dropped outdated kernel and platform support (**Linux 5.15+ required**, tested up to **6.15**).
+* Dropped outdated kernel and platform support (**Linux 5.15+ required**, tested up to **6.16**).
 * Fixed various array out-of-bounds issues and improved overall code safety.
 * Improved USB initialization and streamlined module structure.
 * Extended station information and debug logging.
