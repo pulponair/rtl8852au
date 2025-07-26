@@ -1,143 +1,157 @@
+# rtl8852au Linux Driver (Community Fork)
 
+[![Kernel 6.x CI](https://github.com/pulponair/rtl8852au/actions/workflows/kernel-build.yml/badge.svg?branch=develop)](https://github.com/pulponair/rtl8852au/actions)
+
+> **CI Status:** Automated builds are tested against Linux kernels **6.8**, **6.13**, **6.14**, and **6.15**.
+
+This project is a community-maintained fork of the original Realtek USB WiFi driver
+**RTL8852AU\_WiFi\_linux\_v1.15.0.1-0-g487ee886.20210714**,
+which was initially maintained by Larry Finger.
+After Larry's passing, this fork (maintained at [pulponair/rtl8852au](https://github.com/pulponair/rtl8852au)) continues to modernize and improve the driver for current Linux kernels.
 
 ---
 
-This repo is was started with the code from the Realtek USB driver
-RTL8852AU_WiFi_linux_v1.15.0.1-0-g487ee886.20210714. The current code improves
-on the Realtek code by reworking the debug output to avoid spamming the logs.
-In the current settings, messages from RTW_ERR(), RTW_WARNING(), and
-RTW_WARNING() will be output.
+## Key Improvements
 
-If you want more output, increase the value of CONFIG_RTW_LOG_LEVEL in Makefile.
-This parameter should probably be one that can be set at module load time,
-but that is a matter for another time.
+* Dropped outdated kernel and platform support (**Linux 5.15+ required**, tested up to **6.15**).
+* Fixed various array out-of-bounds issues and improved overall code safety.
+* Improved USB initialization and streamlined module structure.
+* Extended station information and debug logging.
+* Removed legacy Realtek code for a cleaner, more maintainable driver.
 
-The driver supports rtl8832au/rtl8852au chipsets.
+---
 
-This driver currently handles the following devices:
+## Supported Chipsets
 
-* BUFFALO WI-U3-1200AX2(/N) with USB ID 0411:0312
-* ASUS USB-AX56 with USB ID 0b05:1997
-* ASUS USB-AX56 with USB ID 0b05:1a62
-* EDUP EP-AX1696GS with USB ID 0bda:8832
-* Fenvi FU-AX1800P with USB ID 0bda:885c
-* Realtek Demo Board with USB ID 0bda:8832
-* Realtek Demo Board with USB ID 0bda:885a
-* Realtek Demo Board with USB ID 0bda:885c
-* D-Link DWA-X1850 with USB ID 2001:3321
-* TP-Link AX1800 with USB ID 2357:013f or 2357:0141
-* ipTIME AX2000U with USB ID 0bda:8832
-* ELECOM WDC-X1201DU3 with USB ID 056e:4020
+* **rtl8832au**
+* **rtl8852au**
 
-The D-Link DWA-X1850 comes with a configuration that appears to be a USB disk,
-which contains a Windows driver. If a 'lsusb' command shows the ID 0bda:1a2b,
-then this disk is mounted. The way to avoid this is to edit either file
-/usr/lib/udev/rules.d/40-usb_modeswitch.rules, or
-/lib/udev/rules.d/40-usb_modeswitch.rules, whichever is on your system, and add
-the following lines:
+---
 
-# D-Link DWA-X1850 Wifi Dongle
-ATTR{idVendor}=="0bda", ATTR{idProduct}=="1a2b", RUN+="usb_modeswitch '/%k'"
+## Known Supported Devices
 
-### Installation instruction
-##### Requirements
-You will need to install "make", "gcc", "kernel headers", "kernel build essentials", and "git".
+* BUFFALO WI-U3-1200AX2(/N) – `0411:0312`
+* ASUS USB-AX56 – `0b05:1997`, `0b05:1a62`
+* EDUP EP-AX1696GS – `0bda:8832`
+* Fenvi FU-AX1800P – `0bda:885c`
+* Realtek Demo Boards – `0bda:8832`, `0bda:885a`, `0bda:885c`
+* D-Link DWA-X1850 – `2001:3321`, `2001:0141`
+* TP-Link AX1800 – `2357:013f`, `2357:0140`
+* TP-Link Archer TX20UH – `2357:0141`
+* TP-Link (vendor 0x35bc) – `35bc:0100`
+* ipTIME AX2000U – `0bda:8832`
+* ELECOM WDC-X1201DU3 – `056e:4020`
 
-For **Ubuntu**: You can install them with the following command
+---
+
+## USB Modeswitch (D-Link DWA-X1850)
+
+Some DWA-X1850 devices appear as a USB disk (`0bda:1a2b`) with Windows drivers.
+To avoid this, add the following rule to either
+`/usr/lib/udev/rules.d/40-usb_modeswitch.rules` or
+`/lib/udev/rules.d/40-usb_modeswitch.rules`:
+
 ```bash
-sudo apt-get update
-sudo apt-get install make gcc linux-headers-$(uname -r) build-essential git
+# D-Link DWA-X1850 WiFi Dongle
+ATTR{idVendor}=="0bda", ATTR{idProduct}=="1a2b", RUN+="usb_modeswitch '/%k'"
 ```
-For **Fedora**: You can install them with the following command
+
+---
+
+## Installation
+
+### Requirements
+
+Install `make`, `gcc`, `kernel headers`, and `git`.
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt update
+sudo apt install -y make gcc linux-headers-$(uname -r) build-essential git
+```
+
+**Fedora:**
+
 ```bash
 sudo dnf install kernel-headers kernel-devel
 sudo dnf group install "C Development Tools and Libraries"
 ```
-For **openSUSE**: Install necessary headers with
+
+**openSUSE:**
+
 ```bash
 sudo zypper install make gcc kernel-devel kernel-default-devel git libopenssl-devel
 ```
-For **Arch**: After installing the necessary kernel headers and base-devel,
+
+**Arch Linux:**
+
 ```bash
-git clone https://aur.archlinux.org/rtw89-dkms-git.git
-cd rtw89-dkms-git
-makepkg -sri
+sudo pacman -S --needed base-devel linux-headers git
 ```
-If any of the packages above are not found check if your distro installs them like that.
 
-##### Installation
-When a USB device is plugged in, or detected at boot, this rule causes the utulity
-usb_modeswitch to unload any 0bda:1a2b devices that it finds. If you have a
-device with different ID, change the rule accordingly.
+---
 
-The build this driver, do the following:
+### Manual Build & Install
 
-For all distros:
 ```bash
-git clone https://github.com/lwfinger/rtl8852au.git
+git clone git://github.com/pulponair/rtl8852au.git
 cd rtl8852au
 make
 sudo make install
+```
 
-When you get a new kernel, you will need to rebuild the driver. Do the following:
+After kernel updates:
+
+```bash
 cd rtl8852au
 git pull
 make
 sudo make install
 ```
 
-When your kernel is updated, then do a 'git pull' and redo the make commands.
+---
 
-##### Installation with module signing for SecureBoot
-For all distros:
+## DKMS Installation (Recommended)
+
+**DKMS automatically rebuilds this driver when your kernel updates.**
+
 ```bash
-git clone git://github.com/lwfinger/rtl8852au.git
+git clone git://github.com/pulponair/rtl8852au.git
 cd rtl8852au
-make
-sudo make sign-install
-```
-You will be promted for a password, please keep it in mind and use it in next steps.
 
-Reboot to activate the new installed module.
-In the MOK managerment screen:
-1. Select "Enroll key" and enroll the key created by above sign-install step
-2. When promted, enter the password you entered when create sign key. 
-
-If you enter wrong password, your computer won't not rebootable. In this case,
-   use the BOOT menu from your BIOS, to boot into your OS then do below steps:
-
-```bash
-sudo mokutil --reset
-```
-Restart your computer
-Use BOOT menu from BIOS to boot into your OS
-In the MOK managerment screen, select reset MOK list
-Reboot then retry from the step make sign-install
-
-## Adding modules to DKMS for Debian/Ubuntu
-
-DKMS automatically rebuilds the driver module for each kernel update. (So that you don't have to `make; make install` at every update)
-
-Build and Installation (For currently active kernel)
-
-```bash
-# Add module to dkms tree
+# Add the module using its current version (auto-read from dkms.conf)
+version=$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2)
 sudo dkms add .
-
-# Build 
-sudo dkms build rtl8852au -v 1.15.0.1
-
-# Install 
-sudo dkms install rtl8852au -v 1.15.0.1
-
-# Check installation
-modinfo 8852au
-
-# Load driver 
-modprobe 8852au
+sudo dkms build rtl8852au/${version}
+sudo dkms install rtl8852au/${version}
 ```
 
+To verify:
 
+```bash
+modinfo 8852au
+```
 
+**Updating via DKMS:**
 
-Larry Finger
+```bash
+cd rtl8852au
+git pull
+version=$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2)
+sudo dkms remove rtl8852au/${version} --all
+sudo dkms add .
+sudo dkms build rtl8852au/${version}
+sudo dkms install rtl8852au/${version}
+```
+
+---
+
+## Secure Boot (Optional)
+
+If Secure Boot is enabled, sign the module:
+
+```bash
+make
+sudo make
+```
