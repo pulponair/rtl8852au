@@ -29,9 +29,6 @@
 
 
 
-#ifdef PLATFORM_FREEBSD
-	#include <osdep_service_bsd.h>
-#endif
 
 #ifdef PLATFORM_LINUX
 	#include <linux/version.h>

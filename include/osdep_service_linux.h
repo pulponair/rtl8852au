@@ -24,9 +24,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/namei.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 5))
 #include <linux/kref.h>
-#endif
 /* #include <linux/smp_lock.h> */
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
@@ -36,11 +34,7 @@
 #include <asm/byteorder.h>
 #include <asm/atomic.h>
 #include <asm/io.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 26))
-#include <asm/semaphore.h>
-#else
 #include <linux/semaphore.h>
-#endif
 #include <linux/sem.h>
 #include <linux/sched.h>
 #include <linux/etherdevice.h>
@@ -57,25 +51,14 @@
 #include <linux/vmalloc.h>
 
 #ifdef CONFIG_RECV_THREAD_MODE
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 #include <uapi/linux/sched/types.h>	/* struct sched_param */
 #endif
-#endif
 
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 5, 41))
-#include <linux/tqueue.h>
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 #include <uapi/linux/limits.h>
-#else
-#include <linux/limits.h>
-#endif
 
 #ifdef RTK_DMP_PLATFORM
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 12))
 #include <linux/pageremap.h>
-#endif
 #include <asm/io.h>
 #endif
 
@@ -85,15 +68,8 @@
 
 /* Monitor mode */
 #include <net/ieee80211_radiotap.h>
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
 #include <linux/ieee80211.h>
-#endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25) && \
-	 LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29))
-#define CONFIG_IEEE80211_HT_ADDT_INFO
-#endif
 
 #ifdef CONFIG_IOCTL_CFG80211
 /*	#include <linux/ieee80211.h> */
@@ -111,11 +87,7 @@
 
 #ifdef CONFIG_USB_HCI
 #include <linux/usb.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 21))
-#include <linux/usb_ch9.h>
-#else
 #include <linux/usb/ch9.h>
-#endif
 #endif
 
 
@@ -125,20 +97,6 @@
 
 #endif
 
-
-#if (KERNEL_VERSION(2, 6, 29) > LINUX_VERSION_CODE && defined(CONFIG_RTW_NAPI))
-
-	#undef CONFIG_RTW_NAPI
-	/*#warning "Linux Kernel version too old to support NAPI (should newer than 2.6.29)\n"*/
-
-#endif
-
-#if (KERNEL_VERSION(2, 6, 33) > LINUX_VERSION_CODE && defined(CONFIG_RTW_GRO))
-
-	#undef CONFIG_RTW_GRO
-	/*#warning "Linux Kernel version too old to support GRO(should newer than 2.6.33)\n"*/
-
-#endif
 
 #define ATOMIC_T atomic_t
 
@@ -241,20 +199,12 @@ static inline void _rtw_mfree(void *pbuf, u32 sz)
 typedef struct urb *PURB;
 
 static inline void *_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma)
-{
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
+{	
 	return usb_alloc_coherent(dev, size, (in_interrupt() ? GFP_ATOMIC : GFP_KERNEL), dma);
-	#else
-	return usb_buffer_alloc(dev, size, (in_interrupt() ? GFP_ATOMIC : GFP_KERNEL), dma);
-	#endif
 }
 static inline void _rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr, dma_addr_t dma)
-{
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
+{	
 	usb_free_coherent(dev, size, addr, dma);
-	#else
-	usb_buffer_free(dev, size, addr, dma);
-	#endif
 }
 #endif /* CONFIG_USB_HCI */
 
@@ -329,57 +279,39 @@ static inline u32 _rtw_down_sema(_sema *sema)
 }
 
 /*lock - mutex*/
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
+
 	typedef struct mutex		_mutex;
-#else
-	typedef struct semaphore	_mutex;
-#endif
+
 static inline void _rtw_mutex_init(_mutex *pmutex)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	mutex_init(pmutex);
-#else
-	init_MUTEX(pmutex);
-#endif
 }
 
 static inline void _rtw_mutex_free(_mutex *pmutex)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	mutex_destroy(pmutex);
-#else
-#endif
+
 }
+
+
 __inline static int _rtw_mutex_lock_interruptible(_mutex *pmutex)
 {
 	int ret = 0;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	/* mutex_lock(pmutex); */
 	ret = mutex_lock_interruptible(pmutex);
-#else
-	ret = down_interruptible(pmutex);
-#endif
 	return ret;
 }
 
 __inline static int _rtw_mutex_lock(_mutex *pmutex)
 {
 	int ret = 0;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	mutex_lock(pmutex);
-#else
-	down(pmutex);
-#endif
 	return ret;
 }
 
 __inline static void _rtw_mutex_unlock(_mutex *pmutex)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	mutex_unlock(pmutex);
-#else
-	up(pmutex);
-#endif
 }
 
 
@@ -436,13 +368,9 @@ typedef struct	hlist_node	rtw_hlist_node;
 #define rtw_hlist_for_each_entry(pos, head, member) hlist_for_each_entry(pos, head, member)
 #define rtw_hlist_for_each_safe(pos, n, head) hlist_for_each_safe(pos, n, head)
 #define rtw_hlist_entry(ptr, type, member) hlist_entry(ptr, type, member)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 #define rtw_hlist_for_each_entry_safe(pos, np, n, head, member) hlist_for_each_entry_safe(pos, n, head, member)
 #define rtw_hlist_for_each_entry_rcu(pos, node, head, member) hlist_for_each_entry_rcu(pos, head, member)
-#else
-#define rtw_hlist_for_each_entry_safe(pos, np, n, head, member) hlist_for_each_entry_safe(pos, np, n, head, member)
-#define rtw_hlist_for_each_entry_rcu(pos, node, head, member) hlist_for_each_entry_rcu(pos, node, head, member)
-#endif
+
 
 /* RCU */
 typedef struct rcu_head rtw_rcu_head;
@@ -451,9 +379,7 @@ typedef struct rcu_head rtw_rcu_head;
 #define rtw_rcu_assign_pointer(p, v) rcu_assign_pointer((p), (v))
 #define rtw_rcu_read_lock() rcu_read_lock()
 #define rtw_rcu_read_unlock() rcu_read_unlock()
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
 #define rtw_rcu_access_pointer(p) rcu_access_pointer(p)
-#endif
 
 /* rhashtable */
 #include "../os_dep/linux/rtw_rhashtable.h"
@@ -530,10 +456,6 @@ static inline void flush_signals_thread(void)
 }
 
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
-	#define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
-#endif
-
 typedef unsigned long systime;
 
 /*tasklet*/
@@ -594,35 +516,9 @@ static inline int _rtw_skb_linearize(struct sk_buff *skb)
 
 static inline struct sk_buff *_rtw_pskb_copy(struct sk_buff *skb)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36))
 	return pskb_copy(skb, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
-#else
-	return skb_clone(skb, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
-#endif
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22))
-/* Porting from linux kernel, for compatible with old kernel. */
-static inline unsigned char *skb_tail_pointer(const struct sk_buff *skb)
-{
-	return skb->tail;
-}
-
-static inline void skb_reset_tail_pointer(struct sk_buff *skb)
-{
-	skb->tail = skb->data;
-}
-
-static inline void skb_set_tail_pointer(struct sk_buff *skb, const int offset)
-{
-	skb->tail = skb->data + offset;
-}
-
-static inline unsigned char *skb_end_pointer(const struct sk_buff *skb)
-{
-	return skb->end;
-}
-#endif
 static inline u8 *rtw_skb_data(struct sk_buff *pkt)
 {
 	return pkt->data;
@@ -635,15 +531,7 @@ static inline u32 rtw_skb_len(struct sk_buff *pkt)
 
 static inline void *rtw_skb_put_zero(struct sk_buff *skb, unsigned int len)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 	return skb_put_zero(skb, len);
-#else
-	void *tmp = skb_put(skb, len);
-
-	memset(tmp, 0, len);
-
-	return tmp;
-#endif
 }
 
 /*timer*/
@@ -654,35 +542,19 @@ struct rtw_timer_list {
 	void *arg;
 };
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
 static inline void timer_hdl(struct timer_list *in_timer)
 {
 	_timer *ptimer = from_timer(ptimer, in_timer, timer);
 
 	ptimer->function(ptimer->arg);
 }
-#else
-static inline void timer_hdl(unsigned long cntx)
-{
-	_timer *ptimer = (_timer *)cntx;
-
-	ptimer->function(ptimer->arg);
-}
-#endif
 
 __inline static void _init_timer(_timer *ptimer, void *pfunc, void *cntx)
 {
 	ptimer->function = pfunc;
 	ptimer->arg = cntx;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
 	timer_setup(&ptimer->timer, timer_hdl, 0);
-#else
-	/* setup_timer(ptimer, pfunc,(u32)cntx);	 */
-	ptimer->timer.function = timer_hdl;
-	ptimer->timer.data = (unsigned long)ptimer;
-	init_timer(&ptimer->timer);
-#endif
 }
 
 __inline static void _set_timer(_timer *ptimer, u32 delay_time)
@@ -709,41 +581,22 @@ __inline static void _cancel_timer_async(_timer *ptimer)
 }
 
 /*work*/
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
 typedef struct work_struct _workitem;
-#else
-typedef struct tq_struct _workitem;
-#endif
+
 
 static inline void _init_workitem(_workitem *pwork, void *pfunc, void *cntx)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 20))
 	INIT_WORK(pwork, pfunc);
-#elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
-	INIT_WORK(pwork, pfunc, pwork);
-#else
-	INIT_TQUEUE(pwork, pfunc, pwork);
-#endif
 }
 
 __inline static void _set_workitem(_workitem *pwork)
 {
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
 	schedule_work(pwork);
-#else
-	schedule_task(pwork);
-#endif
 }
 
 __inline static void _cancel_workitem_sync(_workitem *pwork)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22))
 	cancel_work_sync(pwork);
-#elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
-	flush_scheduled_work();
-#else
-	flush_scheduled_tasks();
-#endif
 }
 /*
  * Global Mutex: can only be used at PASSIVE level.
@@ -765,14 +618,10 @@ __inline static void _cancel_workitem_sync(_workitem *pwork)
 typedef	struct	net_device *_nic_hdl;
 static inline int rtw_netif_queue_stopped(struct net_device *pnetdev)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	return (netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 0)) &&
 		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 1)) &&
 		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 2)) &&
 		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 3)));
-#else
-	return netif_queue_stopped(pnetdev);
-#endif
 }
 
 #ifdef CONFIG_HWSIM
@@ -832,29 +681,17 @@ static inline gro_result_t _rtw_napi_gro_receive(struct napi_struct *napi, struc
 
 static inline void rtw_netif_wake_queue(struct net_device *pnetdev)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	netif_tx_wake_all_queues(pnetdev);
-#else
-	netif_wake_queue(pnetdev);
-#endif
 }
 
 static inline void rtw_netif_start_queue(struct net_device *pnetdev)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	netif_tx_start_all_queues(pnetdev);
-#else
-	netif_start_queue(pnetdev);
-#endif
 }
 
 static inline void rtw_netif_stop_queue(struct net_device *pnetdev)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	netif_tx_stop_all_queues(pnetdev);
-#else
-	netif_stop_queue(pnetdev);
-#endif
 }
 static inline void rtw_netif_device_attach(struct net_device *pnetdev)
 {
@@ -882,11 +719,7 @@ static inline int rtw_merge_string(char *dst, int dst_len, const char *src1, con
 	return len;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	#define rtw_signal_process(pid, sig) kill_pid(find_vpid((pid)), (sig), 1)
-#else /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
-	#define rtw_signal_process(pid, sig) kill_proc((pid), (sig), 1)
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 
 
 /* Suspend lock prevent system from going suspend */
@@ -951,16 +784,7 @@ static inline int ATOMIC_DEC_RETURN(ATOMIC_T *v)
 
 static inline bool ATOMIC_INC_UNLESS(ATOMIC_T *v, int u)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 15))
 	return atomic_add_unless(v, 1, u);
-#else
-	/* only make sure not exceed after this function */
-	if (ATOMIC_INC_RETURN(v) > u) {
-		ATOMIC_DEC(v);
-		return 0;
-	}
-	return 1;
-#endif
 }
 
 #define NDEV_FMT "%s"
@@ -980,19 +804,8 @@ struct rtw_netdev_priv_indicator {
 struct net_device *rtw_alloc_etherdev_with_old_priv(int sizeof_priv, void *old_priv);
 extern struct net_device *rtw_alloc_etherdev(int sizeof_priv);
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
-#define rtw_get_same_net_ndev_by_name(ndev, name) dev_get_by_name(name)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 26))
-#define rtw_get_same_net_ndev_by_name(ndev, name) dev_get_by_name(ndev->nd_net, name)
-#else
 #define rtw_get_same_net_ndev_by_name(ndev, name) dev_get_by_name(dev_net(ndev), name)
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
-#define rtw_get_bridge_ndev_by_name(name) dev_get_by_name(name)
-#else
 #define rtw_get_bridge_ndev_by_name(name) dev_get_by_name(&init_net, name)
-#endif
 
 static inline void rtw_dump_stack(void)
 {
