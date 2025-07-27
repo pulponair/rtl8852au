@@ -191,7 +191,7 @@ static u8 rtw_deinit_intf_priv(struct dvobj_priv *dvobj)
 	PUSB_DATA pusb_data = dvobj_to_usb(dvobj);
 
 #ifdef CONFIG_USB_VENDOR_REQ_BUFFER_PREALLOC
-	if (pusb_data->usb_vendor_req_buf)
+	if (pusb_data->usb_alloc_vendor_req_buf)
 		rtw_mfree(pusb_data->usb_alloc_vendor_req_buf, MAX_USB_IO_CTL_SIZE);
 #endif
 
