@@ -88,78 +88,75 @@ void _dump_recv_priv(struct dvobj_priv *dvobj, _queue *pfree_recv_queue)
 
 #endif
 
-sint rtw_init_recv_priv(struct dvobj_priv *dvobj)
+int rtw_init_recv_priv(struct dvobj_priv *dvobj)
 {
-	sint i;
+	int i, res = _SUCCESS;
 	union recv_frame *precvframe;
-	sint	res = _SUCCESS;
 	struct recv_priv *precvpriv = &dvobj->recvpriv;
 
-	#ifdef CONFIG_RECV_THREAD_MODE
+#ifdef CONFIG_RECV_THREAD_MODE
 	_rtw_init_sema(&precvpriv->recv_sema, 0);
-	#endif
+#endif
 
 	_rtw_init_queue(&precvpriv->free_recv_queue);
-	#if 0
-	_rtw_init_queue(&precvpriv->uc_swdec_pending_queue);
-	#endif
 
 	precvpriv->dvobj = dvobj;
-
 	precvpriv->free_recvframe_cnt = NR_RECVFRAME;
 
 	rtw_os_recv_resource_init(precvpriv);
 
-	precvpriv->pallocated_frame_buf = rtw_zvmalloc(NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
-
-	if (precvpriv->pallocated_frame_buf == NULL) {
+	precvpriv->pallocated_frame_buf =
+		rtw_zvmalloc(NR_RECVFRAME * sizeof(union recv_frame));
+	if (!precvpriv->pallocated_frame_buf) {
 		res = _FAIL;
 		goto exit;
 	}
-	/* _rtw_memset(precvpriv->pallocated_frame_buf, 0, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ); */
 
-	precvpriv->precv_frame_buf = (u8 *)ALIGN((SIZE_PTR)(precvpriv->pallocated_frame_buf), RXFRAME_ALIGN_SZ);
-	/* precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf + RXFRAME_ALIGN_SZ - */
-	/*						((SIZE_PTR) (precvpriv->pallocated_frame_buf) &(RXFRAME_ALIGN_SZ-1)); */
+	precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf;
+	precvframe = (union recv_frame *)precvpriv->precv_frame_buf;
 
-	precvframe = (union recv_frame *) precvpriv->precv_frame_buf;
+	for (i = 0; i < NR_RECVFRAME; i++) {
+		_rtw_init_listhead(&precvframe->u.list);
+		rtw_list_insert_tail(&precvframe->u.list,
+				     &precvpriv->free_recv_queue.queue);
 
-
-	for (i = 0; i < NR_RECVFRAME ; i++) {
-		_rtw_init_listhead(&(precvframe->u.list));
-
-		rtw_list_insert_tail(&(precvframe->u.list), &(precvpriv->free_recv_queue.queue));
-
-		rtw_os_recv_resource_alloc(precvframe);
+		if (rtw_os_recv_resource_alloc(precvframe) != _SUCCESS) {
+			RTW_ERR("%s: rtw_os_recv_resource_alloc(%d) failed\n",
+				__func__, i);
+			res = _FAIL;
+			goto exit_free_frames;
+		}
 
 		precvframe->u.hdr.len = 0;
-
 		precvframe->u.hdr.dvobj = dvobj;
 		precvframe->u.hdr.adapter = NULL;
 		precvframe->u.hdr.rx_req = NULL;
 
 		precvframe++;
 	}
-	#ifdef DBG_RECV_FRAME
-	RTW_INFO("%s =>precvpriv->free_recvframe_cnt:%d\n", __func__, precvpriv->free_recvframe_cnt);
-	#endif
+
+#ifdef DBG_RECV_FRAME
+	RTW_INFO("%s => free_recvframe_cnt:%d\n",
+		 __func__, precvpriv->free_recvframe_cnt);
+#endif
 
 	res = rtw_intf_init_recv_priv(dvobj);
-	#ifdef DBG_RECV_FRAME
+#ifdef DBG_RECV_FRAME
 	_dump_recv_priv(dvobj, &dvobj->recvpriv.free_recv_queue);
-	#endif
+#endif
+	goto exit;
+
+exit_free_frames:
+	kvfree(precvpriv->pallocated_frame_buf);
+	precvpriv->pallocated_frame_buf = NULL;
+
 exit:
 	return res;
-
 }
 
 void rtw_free_recv_priv(struct dvobj_priv *dvobj)
 {
 	struct recv_priv *precvpriv = &dvobj->recvpriv;
-
-	#if 0
-	rtw_free_uc_swdec_pending_queue(dvobj);
-	#endif
 
 #ifdef CONFIG_RECV_THREAD_MODE
 	_rtw_free_sema(&precvpriv->recv_sema);
@@ -168,10 +165,10 @@ void rtw_free_recv_priv(struct dvobj_priv *dvobj)
 	rtw_os_recv_resource_free(precvpriv);
 
 	if (precvpriv->pallocated_frame_buf)
-		rtw_vmfree(precvpriv->pallocated_frame_buf, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
+		rtw_vmfree(precvpriv->pallocated_frame_buf,
+		           NR_RECVFRAME * sizeof(union recv_frame));
 
 	_rtw_deinit_queue(&precvpriv->free_recv_queue);
-
 	rtw_intf_free_recv_priv(dvobj);
 }
 
