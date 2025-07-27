@@ -59,4 +59,4 @@ jobs:
           KSRC=$(ls -d /usr/src/linux-headers-* | grep generic | head -n1)
           echo "Building against kernel headers in $KSRC"
           make clean
-          make -j$(nproc) KSRC="$KSRC" V=1
+          make -j$(nproc) KSRC="$KSRC"

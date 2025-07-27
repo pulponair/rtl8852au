@@ -160,172 +160,57 @@ static void free_txring(_adapter *padapter)
 s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 {
 	int i;
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	struct xmit_buf *pxmitbuf;
-	#endif
 	struct xmit_frame *pxframe;
 	sint res = _SUCCESS;
-	/* MGT_TXREQ_MGT */
 	u8 *txreq = NULL, *pkt_list = NULL;
-
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
-
-	u8 xmitbuf_nr = GET_HAL_XMITBUF_NR(dvobj);
-	u16 xmitbuf_sz = GET_HAL_XMITBUF_SZ(dvobj);
-
-	u8 xmitbuf_ext_nr = GET_HAL_XMITBUF_EXT_NR(dvobj);
-	u16 xmitbuf_ext_sz = GET_HAL_XMITBUF_EXT_SZ(dvobj);
-	#endif
-
-	/* We don't need to memset padapter->XXX to zero, because adapter is allocated by rtw_zvmalloc(). */
-	/* _rtw_memset((unsigned char *)pxmitpriv, 0, sizeof(struct xmit_priv)); */
 
 	_rtw_spinlock_init(&pxmitpriv->lock);
 	_rtw_spinlock_init(&pxmitpriv->lock_sctx);
-	#if 0 /*def CONFIG_XMIT_THREAD_MODE*/
-	_rtw_init_sema(&pxmitpriv->xmit_sema, 0);
-	#endif
-
-	/*
-	Please insert all the queue initializaiton using _rtw_init_queue below
-	*/
 
 	pxmitpriv->adapter = padapter;
-
-	/* for(i = 0 ; i < MAX_NUMBLKS; i++) */
-	/*	_rtw_init_queue(&pxmitpriv->blk_strms[i]); */
 
 	_rtw_init_queue(&pxmitpriv->be_pending);
 	_rtw_init_queue(&pxmitpriv->bk_pending);
 	_rtw_init_queue(&pxmitpriv->vi_pending);
 	_rtw_init_queue(&pxmitpriv->vo_pending);
 	_rtw_init_queue(&pxmitpriv->bm_pending);
-
-	/* _rtw_init_queue(&pxmitpriv->legacy_dz_queue); */
-	/* _rtw_init_queue(&pxmitpriv->apsd_queue); */
-
 	_rtw_init_queue(&pxmitpriv->free_xmit_queue);
 
-	/*
-	Please allocate memory with the sz = (struct xmit_frame) * NR_XMITFRAME,
-	and initialize free_xmit_frame below.
-	Please also apply  free_txobj to link_up all the xmit_frames...
-	*/
-
-	pxmitpriv->pallocated_frame_buf = rtw_zvmalloc(NR_XMITFRAME * sizeof(struct xmit_frame) + 4);
-
-	if (pxmitpriv->pallocated_frame_buf  == NULL) {
+	/* Allocate memory for xmit_frame pool */
+	pxmitpriv->pallocated_frame_buf = rtw_zvmalloc(NR_XMITFRAME * sizeof(struct xmit_frame));
+	if (pxmitpriv->pallocated_frame_buf == NULL) {
 		pxmitpriv->pxmit_frame_buf = NULL;
 		res = _FAIL;
 		goto exit;
 	}
-	pxmitpriv->pxmit_frame_buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_frame_buf), 4);
-	/* pxmitpriv->pxmit_frame_buf = pxmitpriv->pallocated_frame_buf + 4 - */
-	/*						((SIZE_PTR) (pxmitpriv->pallocated_frame_buf) &3); */
+	pxmitpriv->pxmit_frame_buf = pxmitpriv->pallocated_frame_buf;
 
-	pxframe = (struct xmit_frame *) pxmitpriv->pxmit_frame_buf;
-
+	pxframe = (struct xmit_frame *)pxmitpriv->pxmit_frame_buf;
 	for (i = 0; i < NR_XMITFRAME; i++) {
 		_rtw_init_listhead(&(pxframe->list));
-
 		pxframe->padapter = padapter;
 		pxframe->frame_tag = NULL_FRAMETAG;
-
 		pxframe->pkt = NULL;
-
-		#if 0 /*CONFIG_CORE_XMITBUF*/
-		pxframe->buf_addr = NULL;
-		pxframe->pxmitbuf = NULL;
-		#else
-		/*alloc buf_addr*/
-		/*rtw_os_xmit_resource_alloc(padapter, pxframe);*/
-		#endif
-
 		rtw_list_insert_tail(&(pxframe->list), &(pxmitpriv->free_xmit_queue.queue));
-
 		pxframe++;
 	}
-
 	pxmitpriv->free_xmitframe_cnt = NR_XMITFRAME;
-
 	pxmitpriv->frag_len = MAX_FRAG_THRESHOLD;
 
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	/* init xmit_buf */
-	_rtw_init_queue(&pxmitpriv->free_xmitbuf_queue);
-	_rtw_init_queue(&pxmitpriv->pending_xmitbuf_queue);
-
-	pxmitpriv->pallocated_xmitbuf = rtw_zvmalloc(xmitbuf_nr * sizeof(struct xmit_buf) + 4);
-
-	if (pxmitpriv->pallocated_xmitbuf  == NULL) {
-		res = _FAIL;
-		goto exit;
-	}
-
-	pxmitpriv->pxmitbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_xmitbuf), 4);
-	/* pxmitpriv->pxmitbuf = pxmitpriv->pallocated_xmitbuf + 4 - */
-	/*						((SIZE_PTR) (pxmitpriv->pallocated_xmitbuf) &3); */
-
-	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmitbuf;
-
-	for (i = 0; i < xmitbuf_nr; i++) {
-		_rtw_init_listhead(&pxmitbuf->list);
-
-		pxmitbuf->priv_data = NULL;
-		pxmitbuf->padapter = padapter;
-		pxmitbuf->buf_tag = XMITBUF_DATA;
-
-		/* Tx buf allocation may fail sometimes, so sleep and retry. */
-		res = rtw_os_xmit_resource_alloc(padapter, pxmitbuf,
-					(xmitbuf_sz + SZ_ALIGN_XMITFRAME_EXT), _TRUE);
-		if (res == _FAIL) {
-			rtw_msleep_os(10);
-			res = rtw_os_xmit_resource_alloc(padapter, pxmitbuf,
-					(xmitbuf_sz + SZ_ALIGN_XMITFRAME_EXT), _TRUE);
-			if (res == _FAIL)
-				goto exit;
-		}
-
-#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
-		pxmitbuf->phead = pxmitbuf->pbuf;
-		pxmitbuf->pend = pxmitbuf->pbuf + xmitbuf_sz;
-		pxmitbuf->len = 0;
-		pxmitbuf->pdata = pxmitbuf->ptail = pxmitbuf->phead;
-#endif
-
-		pxmitbuf->flags = XMIT_VO_QUEUE;
-
-		rtw_list_insert_tail(&pxmitbuf->list, &(pxmitpriv->free_xmitbuf_queue.queue));
-#ifdef DBG_XMIT_BUF
-		pxmitbuf->no = i;
-#endif
-
-		pxmitbuf++;
-
-	}
-
-	pxmitpriv->free_xmitbuf_cnt = xmitbuf_nr;
-	#endif
-	/* init xframe_ext queue,  the same count as extbuf */
 	_rtw_init_queue(&pxmitpriv->free_xframe_ext_queue);
-#ifdef CONFIG_LAYER2_ROAMING
-	_rtw_init_queue(&pxmitpriv->rpkt_queue);
-#endif
 
-	pxmitpriv->xframe_ext_alloc_addr = rtw_zvmalloc(NR_XMITFRAME_EXT * sizeof(struct xmit_frame) + 4);
-
-	if (pxmitpriv->xframe_ext_alloc_addr  == NULL) {
+	pxmitpriv->xframe_ext_alloc_addr = rtw_zvmalloc(NR_XMITFRAME_EXT * sizeof(struct xmit_frame));
+	if (pxmitpriv->xframe_ext_alloc_addr == NULL) {
 		pxmitpriv->xframe_ext = NULL;
 		res = _FAIL;
 		goto exit;
 	}
-	pxmitpriv->xframe_ext = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->xframe_ext_alloc_addr), 4);
+	pxmitpriv->xframe_ext = pxmitpriv->xframe_ext_alloc_addr;
 	pxframe = (struct xmit_frame *)pxmitpriv->xframe_ext;
 
 	/* MGT_TXREQ_QMGT */
 	pxmitpriv->xframe_ext_txreq_alloc_addr = rtw_zmalloc(NR_XMITFRAME_EXT * SZ_MGT_RING);
-	if (pxmitpriv->xframe_ext_txreq_alloc_addr  == NULL) {
+	if (pxmitpriv->xframe_ext_txreq_alloc_addr == NULL) {
 		pxmitpriv->xframe_ext_txreq = NULL;
 		res = _FAIL;
 		goto exit;
@@ -336,126 +221,36 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 
 	for (i = 0; i < NR_XMITFRAME_EXT; i++) {
 		_rtw_init_listhead(&(pxframe->list));
-
 		pxframe->padapter = padapter;
 		pxframe->frame_tag = NULL_FRAMETAG;
-
 		pxframe->pkt = NULL;
-
-		#if 0 /*CONFIG_CORE_XMITBUF*/
-		pxframe->buf_addr = NULL;
-		pxframe->pxmitbuf = NULL;
-		#else
-		/*alloc buf_addr*/
 		rtw_os_xmit_resource_alloc(padapter, pxframe);
-		#endif
 
 		pxframe->ext_tag = 1;
-
-		/* MGT_TXREQ_QMGT */
 		pxframe->phl_txreq = (struct rtw_xmit_req *)txreq;
 		pxframe->phl_txreq->pkt_list = pkt_list;
 
 		rtw_list_insert_tail(&(pxframe->list), &(pxmitpriv->free_xframe_ext_queue.queue));
 
 		pxframe++;
-		/* MGT_TXREQ_QMGT */
 		txreq += SZ_MGT_RING;
 		pkt_list += SZ_MGT_RING;
 	}
 	pxmitpriv->free_xframe_ext_cnt = NR_XMITFRAME_EXT;
 
-#if 0 /*CONFIG_CORE_XMITBUF*/
-	/* Init xmit extension buff */
-	_rtw_init_queue(&pxmitpriv->free_xmit_extbuf_queue);
-
-	pxmitpriv->pallocated_xmit_extbuf = rtw_zvmalloc(xmitbuf_ext_nr * sizeof(struct xmit_buf) + 4);
-
-	if (pxmitpriv->pallocated_xmit_extbuf  == NULL) {
-		res = _FAIL;
-		goto exit;
-	}
-
-	pxmitpriv->pxmit_extbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_xmit_extbuf), 4);
-
-	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmit_extbuf;
-
-	for (i = 0; i < xmitbuf_ext_nr; i++) {
-		_rtw_init_listhead(&pxmitbuf->list);
-
-		pxmitbuf->priv_data = NULL;
-		pxmitbuf->padapter = padapter;
-		pxmitbuf->buf_tag = XMITBUF_MGNT;
-
-		res = rtw_os_xmit_resource_alloc(padapter, pxmitbuf,
-					xmitbuf_ext_sz + SZ_ALIGN_XMITFRAME_EXT, _TRUE);
-		if (res == _FAIL) {
-			res = _FAIL;
-			goto exit;
-		}
-
-#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
-		pxmitbuf->phead = pxmitbuf->pbuf;
-		pxmitbuf->pend = pxmitbuf->pbuf + xmitbuf_ext_sz;
-		pxmitbuf->len = 0;
-		pxmitbuf->pdata = pxmitbuf->ptail = pxmitbuf->phead;
-#endif
-
-		rtw_list_insert_tail(&pxmitbuf->list, &(pxmitpriv->free_xmit_extbuf_queue.queue));
-#ifdef DBG_XMIT_BUF_EXT
-		pxmitbuf->no = i;
-#endif
-		pxmitbuf++;
-
-	}
-
-	pxmitpriv->free_xmit_extbuf_cnt = xmitbuf_ext_nr;
-
-	/*GEORGIA_TODO_FIXIT_IC_GEN_DEPENDENCE*/
-	for (i = 0; i < CMDBUF_MAX; i++) {
-		pxmitbuf = &pxmitpriv->pcmd_xmitbuf[i];
-		if (pxmitbuf) {
-			_rtw_init_listhead(&pxmitbuf->list);
-
-			pxmitbuf->priv_data = NULL;
-			pxmitbuf->padapter = padapter;
-			pxmitbuf->buf_tag = XMITBUF_CMD;
-
-			res = rtw_os_xmit_resource_alloc(padapter, pxmitbuf,
-					MAX_CMDBUF_SZ + SZ_ALIGN_XMITFRAME_EXT, _TRUE);
-			if (res == _FAIL) {
-				res = _FAIL;
-				goto exit;
-			}
-
-#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
-			pxmitbuf->phead = pxmitbuf->pbuf;
-			pxmitbuf->pend = pxmitbuf->pbuf + MAX_CMDBUF_SZ;
-			pxmitbuf->len = 0;
-			pxmitbuf->pdata = pxmitbuf->ptail = pxmitbuf->phead;
-#endif
-			pxmitbuf->alloc_sz = MAX_CMDBUF_SZ + SZ_ALIGN_XMITFRAME_EXT;
-		}
-	}
-#endif
 	rtw_alloc_hwxmits(padapter);
 	rtw_init_hwxmits(pxmitpriv->hwxmits, pxmitpriv->hwxmit_entry);
-
 	for (i = 0; i < 4; i++)
 		pxmitpriv->wmm_para_seq[i] = i;
 
 #ifdef CONFIG_USB_HCI
 	pxmitpriv->txirp_cnt = 1;
-
 	_rtw_init_sema(&(pxmitpriv->tx_retevt), 0);
-
-	/* per AC pending irp */
 	pxmitpriv->beq_cnt = 0;
 	pxmitpriv->bkq_cnt = 0;
 	pxmitpriv->viq_cnt = 0;
 	pxmitpriv->voq_cnt = 0;
 #endif
-
 
 #ifdef CONFIG_XMIT_ACK
 	pxmitpriv->ack_tx = _FALSE;
@@ -463,38 +258,10 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 	rtw_sctx_init(&pxmitpriv->ack_tx_ops, 0);
 #endif
 
-#ifdef CONFIG_TX_AMSDU
-	rtw_init_timer(&(pxmitpriv->amsdu_vo_timer),
-		rtw_amsdu_vo_timeout_handler, padapter);
-	pxmitpriv->amsdu_vo_timeout = RTW_AMSDU_TIMER_UNSET;
-
-	rtw_init_timer(&(pxmitpriv->amsdu_vi_timer),
-		rtw_amsdu_vi_timeout_handler, padapter);
-	pxmitpriv->amsdu_vi_timeout = RTW_AMSDU_TIMER_UNSET;
-
-	rtw_init_timer(&(pxmitpriv->amsdu_be_timer),
-		rtw_amsdu_be_timeout_handler, padapter);
-	pxmitpriv->amsdu_be_timeout = RTW_AMSDU_TIMER_UNSET;
-
-	rtw_init_timer(&(pxmitpriv->amsdu_bk_timer),
-		rtw_amsdu_bk_timeout_handler, padapter);
-	pxmitpriv->amsdu_bk_timeout = RTW_AMSDU_TIMER_UNSET;
-
-	pxmitpriv->amsdu_debug_set_timer = 0;
-	pxmitpriv->amsdu_debug_timeout = 0;
-	pxmitpriv->amsdu_debug_coalesce_one = 0;
-	pxmitpriv->amsdu_debug_coalesce_two = 0;
-	pxmitpriv->amsdu_debug_tasklet = 0;
-	pxmitpriv->amsdu_debug_enqueue = 0;
-	pxmitpriv->amsdu_debug_dequeue = 0;
-#endif
-#ifdef DBG_TXBD_DESC_DUMP
-	pxmitpriv->dump_txbd_desc = 0;
-#endif
 	rtw_init_xmit_block(padapter);
 	rtw_intf_init_xmit_priv(padapter);
 
-#ifdef RTW_PHL_TX //alloc xmit resource
+#ifdef RTW_PHL_TX
 	RTW_INFO("eric-tx CALL alloc_txring !!!!\n");
 	if (alloc_txring(padapter) == _FAIL) {
 		RTW_ERR("[core] alloc_txring fail !!!\n");
@@ -503,12 +270,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 	}
 #endif
 
-#if defined(CONFIG_CORE_TXSC)
-	_rtw_spinlock_init(&pxmitpriv->txsc_lock);
-#endif
-
 exit:
-
 	return res;
 }
 
@@ -541,96 +303,54 @@ void _rtw_free_xmit_priv(struct xmit_priv *pxmitpriv)
 	int i;
 	_adapter *padapter = pxmitpriv->adapter;
 	struct xmit_frame *pxmitframe;
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	struct xmit_buf *pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmitbuf;
-	#endif
-
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
-	u8 xmitbuf_nr = GET_HAL_XMITBUF_NR(dvobj);
-	u16 xmitbuf_sz = GET_HAL_XMITBUF_SZ(dvobj);
-
-	u8 xmitbuf_ext_nr = GET_HAL_XMITBUF_EXT_NR(dvobj);
-	u16 xmitbuf_ext_sz = GET_HAL_XMITBUF_EXT_SZ(dvobj);
-	#endif
 
 	rtw_intf_free_xmit_priv(padapter);
-
 	rtw_mfree_xmit_priv_lock(pxmitpriv);
 
 	if (pxmitpriv->pxmit_frame_buf == NULL)
 		goto out;
 
-	pxmitframe = (struct xmit_frame *) pxmitpriv->pxmit_frame_buf;
-
+	/* Free NR_XMITFRAME frames */
+	pxmitframe = (struct xmit_frame *)pxmitpriv->pxmit_frame_buf;
 	for (i = 0; i < NR_XMITFRAME; i++) {
 		rtw_os_xmit_complete(padapter, pxmitframe);
-		/*alloc buf_addr*/
-		/*rtw_os_xmit_resource_free(padapter, pxmitframe);*/
 		pxmitframe++;
 	}
 
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	for (i = 0; i < xmitbuf_nr; i++) {
-		rtw_os_xmit_resource_free(padapter, pxmitbuf,
-			(xmitbuf_sz + SZ_ALIGN_XMITFRAME_EXT), _TRUE);
-
-		pxmitbuf++;
-	}
-	#endif
-	if (pxmitpriv->pallocated_frame_buf)
+	if (pxmitpriv->pallocated_frame_buf) {
 		rtw_vmfree(pxmitpriv->pallocated_frame_buf,
-			NR_XMITFRAME * sizeof(struct xmit_frame) + 4);
+			NR_XMITFRAME * sizeof(struct xmit_frame));
+		pxmitpriv->pallocated_frame_buf = NULL;
+		pxmitpriv->pxmit_frame_buf = NULL;
+	}
 
-	#if 0 /*CONFIG_CORE_XMITBUF*/
-	if (pxmitpriv->pallocated_xmitbuf)
-		rtw_vmfree(pxmitpriv->pallocated_xmitbuf,
-			xmitbuf_nr * sizeof(struct xmit_buf) + 4);
-	#endif
-
-	/* free xframe_ext queue,  the same count as extbuf */
+	/* Free extended frames */
 	if (pxmitpriv->xframe_ext == NULL)
 		goto out;
 
 	pxmitframe = (struct xmit_frame *)pxmitpriv->xframe_ext;
 	for (i = 0; i < NR_XMITFRAME_EXT; i++) {
 		rtw_os_xmit_complete(padapter, pxmitframe);
-		/*free buf_addr*/
 		rtw_os_xmit_resource_free(padapter, pxmitframe);
 		pxmitframe++;
 	}
 
-	if (pxmitpriv->xframe_ext_alloc_addr)
+	if (pxmitpriv->xframe_ext_alloc_addr) {
 		rtw_vmfree(pxmitpriv->xframe_ext_alloc_addr,
-			NR_XMITFRAME_EXT * sizeof(struct xmit_frame) + 4);
+			NR_XMITFRAME_EXT * sizeof(struct xmit_frame));
+		pxmitpriv->xframe_ext_alloc_addr = NULL;
+		pxmitpriv->xframe_ext = NULL;
+	}
+
 	_rtw_spinlock_free(&pxmitpriv->free_xframe_ext_queue.lock);
 
-	if (pxmitpriv->xframe_ext_txreq_alloc_addr)
-		rtw_mfree(pxmitpriv->xframe_ext_txreq_alloc_addr, NR_XMITFRAME_EXT * SZ_MGT_RING);
-
-#if 0 /*CONFIG_CORE_XMITBUF*/
-
-	/* free xmit extension buff */
-	_rtw_spinlock_free(&pxmitpriv->free_xmit_extbuf_queue.lock);
-
-	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmit_extbuf;
-	for (i = 0; i < xmitbuf_ext_nr; i++) {
-		rtw_os_xmit_resource_free(padapter, pxmitbuf,
-			(xmitbuf_ext_sz + SZ_ALIGN_XMITFRAME_EXT), _TRUE);
-
-		pxmitbuf++;
+	if (pxmitpriv->xframe_ext_txreq_alloc_addr) {
+		rtw_mfree(pxmitpriv->xframe_ext_txreq_alloc_addr,
+			NR_XMITFRAME_EXT * SZ_MGT_RING);
+		pxmitpriv->xframe_ext_txreq_alloc_addr = NULL;
+		pxmitpriv->xframe_ext_txreq = NULL;
 	}
 
-	if (pxmitpriv->pallocated_xmit_extbuf)
-		rtw_vmfree(pxmitpriv->pallocated_xmit_extbuf,
-			xmitbuf_ext_nr * sizeof(struct xmit_buf) + 4);
-
-	for (i = 0; i < CMDBUF_MAX; i++) {
-		pxmitbuf = &pxmitpriv->pcmd_xmitbuf[i];
-		if (pxmitbuf != NULL)
-			rtw_os_xmit_resource_free(padapter, pxmitbuf, MAX_CMDBUF_SZ + SZ_ALIGN_XMITFRAME_EXT, _TRUE);
-	}
-	#endif
 	rtw_free_hwxmits(padapter);
 
 #ifdef CONFIG_LAYER2_ROAMING
@@ -649,22 +369,23 @@ void _rtw_free_xmit_priv(struct xmit_priv *pxmitpriv)
 #ifdef CONFIG_XMIT_ACK
 	_rtw_mutex_free(&pxmitpriv->ack_tx_mutex);
 #endif
+
 	rtw_free_xmit_block(padapter);
 out:
 	return;
 }
 
+
 u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 {
-
 	u8 ret = _SUCCESS;
-/*YiWei_todo need use correct litexmitbuf_nr urb_nr*/
 	u32 litexmitbuf_nr = RTW_LITEXMITBUF_NR;
 	u32 litexmitbuf_ext_nr = RTW_LITEXMITBUF_NR;
 	struct lite_data_buf *litexmitbuf;
-	struct trx_data_buf_q  *litexmitbuf_q = &dvobj->litexmitbuf_q;
-	struct trx_data_buf_q  *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+	struct trx_data_buf_q *litexmitbuf_q = &dvobj->litexmitbuf_q;
+	struct trx_data_buf_q *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
 	int i;
+
 #ifdef CONFIG_USB_HCI
 	struct trx_urb_buf_q *xmit_urb_q = &dvobj->xmit_urb_q;
 	struct data_urb *xmiturb;
@@ -674,48 +395,37 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 	/* init lite_xmit_buf */
 	_rtw_init_queue(&litexmitbuf_q->free_data_buf_queue);
 
-	litexmitbuf_q->alloc_data_buf =
-		rtw_zvmalloc(litexmitbuf_nr * sizeof(struct lite_data_buf) + 4);
-
-	if (litexmitbuf_q->alloc_data_buf  == NULL) {
+	litexmitbuf_q->data_buf =
+		rtw_zvmalloc(litexmitbuf_nr * sizeof(struct lite_data_buf));
+	if (!litexmitbuf_q->data_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
 
-	litexmitbuf_q->data_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(litexmitbuf_q->alloc_data_buf), 4);
-
 	litexmitbuf = (struct lite_data_buf *)litexmitbuf_q->data_buf;
-
 	for (i = 0; i < litexmitbuf_nr; i++) {
 		_rtw_init_listhead(&litexmitbuf->list);
 		rtw_list_insert_tail(&litexmitbuf->list,
-			&(litexmitbuf_q->free_data_buf_queue.queue));
+			&litexmitbuf_q->free_data_buf_queue.queue);
 		litexmitbuf++;
 	}
 	litexmitbuf_q->free_data_buf_cnt = litexmitbuf_nr;
 
-
-	/* Init lite xmit extension buff */
+	/* init lite_xmit_ext_buf */
 	_rtw_init_queue(&litexmit_extbuf_q->free_data_buf_queue);
 
-	litexmit_extbuf_q->alloc_data_buf =
-		rtw_zvmalloc(litexmitbuf_ext_nr * sizeof(struct lite_data_buf) + 4);
-
-	if (litexmit_extbuf_q->alloc_data_buf  == NULL) {
+	litexmit_extbuf_q->data_buf =
+		rtw_zvmalloc(litexmitbuf_ext_nr * sizeof(struct lite_data_buf));
+	if (!litexmit_extbuf_q->data_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
 
-	litexmit_extbuf_q->data_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(litexmit_extbuf_q->alloc_data_buf), 4);
-
 	litexmitbuf = (struct lite_data_buf *)litexmit_extbuf_q->data_buf;
-
 	for (i = 0; i < litexmitbuf_ext_nr; i++) {
 		_rtw_init_listhead(&litexmitbuf->list);
 		rtw_list_insert_tail(&litexmitbuf->list,
-			&(litexmit_extbuf_q->free_data_buf_queue.queue));
+			&litexmit_extbuf_q->free_data_buf_queue.queue);
 		litexmitbuf++;
 	}
 	litexmit_extbuf_q->free_data_buf_cnt = litexmitbuf_ext_nr;
@@ -723,22 +433,22 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 #ifdef CONFIG_USB_HCI
 	/* init xmit_urb */
 	_rtw_init_queue(&xmit_urb_q->free_urb_buf_queue);
-	xmit_urb_q->alloc_urb_buf =
-		rtw_zvmalloc(urb_nr * sizeof(struct data_urb) + 4);
-	if (xmit_urb_q->alloc_urb_buf == NULL) {
+
+	xmit_urb_q->urb_buf =
+		rtw_zvmalloc(urb_nr * sizeof(struct data_urb));
+	if (!xmit_urb_q->urb_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
-
-	xmit_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(xmit_urb_q->alloc_urb_buf), 4);
 
 	xmiturb = (struct data_urb *)xmit_urb_q->urb_buf;
 	for (i = 0; i < urb_nr; i++) {
 		_rtw_init_listhead(&xmiturb->list);
 		ret = rtw_os_urb_resource_alloc(xmiturb);
+		if (ret == _FAIL)
+			goto exit;
 		rtw_list_insert_tail(&xmiturb->list,
-			&(xmit_urb_q->free_urb_buf_queue.queue));
+			&xmit_urb_q->free_urb_buf_queue.queue);
 		xmiturb++;
 	}
 	xmit_urb_q->free_urb_buf_cnt = urb_nr;
@@ -750,12 +460,11 @@ exit:
 
 void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 {
-	u8 ret = _SUCCESS;
-/*YiWei_todo need use correct litexmitbuf_nr urb_nr*/
 	u32 litexmitbuf_nr = RTW_LITEXMITBUF_NR;
 	u32 litexmitbuf_ext_nr = RTW_LITEXMITBUF_NR;
-	struct trx_data_buf_q  *litexmitbuf_q = &dvobj->litexmitbuf_q;
-	struct trx_data_buf_q  *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+	struct trx_data_buf_q *litexmitbuf_q = &dvobj->litexmitbuf_q;
+	struct trx_data_buf_q *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+
 #ifdef CONFIG_USB_HCI
 	struct data_urb *xmiturb;
 	struct trx_urb_buf_q *xmit_urb_q = &dvobj->xmit_urb_q;
@@ -763,13 +472,13 @@ void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 	int i;
 #endif
 
-	if (litexmitbuf_q->alloc_data_buf)
-		rtw_vmfree(litexmitbuf_q->alloc_data_buf,
-			litexmitbuf_nr * sizeof(struct lite_data_buf) + 4);
+	if (litexmitbuf_q->data_buf)
+		rtw_vmfree(litexmitbuf_q->data_buf,
+			litexmitbuf_nr * sizeof(struct lite_data_buf));
 
-	if (litexmit_extbuf_q->alloc_data_buf)
-		rtw_vmfree(litexmit_extbuf_q->alloc_data_buf,
-			litexmitbuf_ext_nr * sizeof(struct lite_data_buf) + 4);
+	if (litexmit_extbuf_q->data_buf)
+		rtw_vmfree(litexmit_extbuf_q->data_buf,
+			litexmitbuf_ext_nr * sizeof(struct lite_data_buf));
 
 #ifdef CONFIG_USB_HCI
 	xmiturb = (struct data_urb *)xmit_urb_q->urb_buf;
@@ -778,12 +487,15 @@ void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 		xmiturb++;
 	}
 
-	if (xmit_urb_q->alloc_urb_buf)
-		rtw_vmfree(xmit_urb_q->alloc_urb_buf,
-			urb_nr * sizeof(struct data_urb) + 4);
+	if (xmit_urb_q->urb_buf)
+		rtw_vmfree(xmit_urb_q->urb_buf,
+			urb_nr * sizeof(struct data_urb));
 #endif
-
 }
+
+
+
+
 
 
 u8 rtw_get_tx_bw_mode(_adapter *adapter, struct sta_info *sta)
@@ -5239,7 +4951,7 @@ struct xmit_frame *rtw_alloc_xmitframe_once(struct xmit_priv *pxmitpriv)
 	if (alloc_addr == NULL)
 		goto exit;
 
-	pxframe = (struct xmit_frame *)N_BYTE_ALIGMENT((SIZE_PTR)(alloc_addr), 4);
+	pxframe = (struct xmit_frame *)ALIGN((SIZE_PTR)(alloc_addr), 4);
 	pxframe->alloc_addr = alloc_addr;
 
 	pxframe->padapter = pxmitpriv->adapter;

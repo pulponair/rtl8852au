@@ -47,10 +47,6 @@ struct xmit_frame;
 struct xmit_buf;
 
 
-#ifdef PLATFORM_FREEBSD
-extern int rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev);
-extern void rtw_xmit_entry_wrap(_nic_hdl pifp);
-#endif /* PLATFORM_FREEBSD */
 
 #ifdef PLATFORM_LINUX
 extern int _rtw_xmit_entry(struct sk_buff *pkt, _nic_hdl pnetdev);

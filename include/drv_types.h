@@ -1615,10 +1615,6 @@ struct _ADAPTER {
 	PLOOPBACKDATA ploopback;
 	#endif
 
-	#ifdef PLATFORM_FREEBSD
-	_nic_hdl pifp;
-	_lock glock;
-	#endif /* PLATFORM_FREEBSD */
 
 	/* for debug purpose */
 #define NO_FIX_RATE		0xFFFF

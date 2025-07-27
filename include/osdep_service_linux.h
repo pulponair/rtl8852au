@@ -54,6 +54,7 @@
 #include <uapi/linux/sched/types.h>	/* struct sched_param */
 #endif
 
+
 #include <uapi/linux/limits.h>
 
 #ifdef RTK_DMP_PLATFORM
@@ -67,7 +68,6 @@
 
 /* Monitor mode */
 #include <net/ieee80211_radiotap.h>
-
 #include <linux/ieee80211.h>
 
 
@@ -98,7 +98,6 @@
 #endif
 
 
-
 #define ATOMIC_T atomic_t
 
 #ifdef DBG_MEMORY_LEAK
@@ -108,18 +107,18 @@ extern ATOMIC_T _malloc_size;
 
 static inline void *_rtw_vmalloc(u32 sz)
 {
-	void *pbuf;
+    void *pbuf;
 
-	pbuf = vmalloc(sz);
+    pbuf = kvmalloc(sz, GFP_KERNEL);  
 
 #ifdef DBG_MEMORY_LEAK
-	if (pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
 #endif /* DBG_MEMORY_LEAK */
 
-	return pbuf;
+    return pbuf;
 }
 
 static inline void *_rtw_zvmalloc(u32 sz)
@@ -135,72 +134,73 @@ static inline void *_rtw_zvmalloc(u32 sz)
 
 static inline void _rtw_vmfree(void *pbuf, u32 sz)
 {
-	vfree(pbuf);
+    kvfree(pbuf);  // sicher für kmalloc/vmalloc Speicher
 
 #ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
+    atomic_dec(&_malloc_cnt);
+    atomic_sub(sz, &_malloc_size);
 #endif /* DBG_MEMORY_LEAK */
 }
 
 static inline void *_rtw_malloc(u32 sz)
 {
-	void *pbuf = NULL;
+    void *pbuf = NULL;
 
-	#ifdef RTK_DMP_PLATFORM
-	if (sz > 0x4000)
-		pbuf = dvr_malloc(sz);
-	else
-	#endif
-		pbuf = kmalloc(sz, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+#ifdef RTK_DMP_PLATFORM
+    if (sz > 0x4000)
+        pbuf = dvr_malloc(sz);
+    else
+#endif
+        /* Defensive: wenn wir im Interrupt sind, KEIN vmalloc-Fallback */
+        pbuf = in_interrupt() ? kmalloc(sz, GFP_ATOMIC)
+                              : kvmalloc(sz, GFP_KERNEL);
 
 #ifdef DBG_MEMORY_LEAK
-	if (pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
-#endif /* DBG_MEMORY_LEAK */
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
+#endif
 
-	return pbuf;
-
+    return pbuf;
 }
 
 static inline void *_rtw_zmalloc(u32 sz)
 {
-#if 0
-	void *pbuf = _rtw_malloc(sz);
+    void *pbuf = in_interrupt()
+        ? kzalloc(sz, GFP_ATOMIC)
+        : kvzalloc(sz, GFP_KERNEL);
 
-	if (pbuf != NULL)
-		memset(pbuf, 0, sz);
-#else
-	/*kzalloc in KERNEL_VERSION(2, 6, 14)*/
-	void *pbuf = kzalloc( sz, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+#ifdef DBG_MEMORY_LEAK
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
+#endif /* DBG_MEMORY_LEAK */
 
-#endif
-	return pbuf;
+    return pbuf;
 }
 
 static inline void _rtw_mfree(void *pbuf, u32 sz)
 {
-	#ifdef RTK_DMP_PLATFORM
-	if (sz > 0x4000)
-		dvr_free(pbuf);
-	else
-	#endif
-		kfree(pbuf);
+    #ifdef RTK_DMP_PLATFORM
+    if (sz > 0x4000)
+        dvr_free(pbuf);
+    else
+    #endif
+        kvfree(pbuf);  // statt kfree
 
 #ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
+    atomic_dec(&_malloc_cnt);
+    atomic_sub(sz, &_malloc_size);
 #endif /* DBG_MEMORY_LEAK */
-
 }
 
 #ifdef CONFIG_USB_HCI
 typedef struct urb *PURB;
 
 static inline void *_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma)
-{
+{	
 	return usb_alloc_coherent(dev, size, (in_interrupt() ? GFP_ATOMIC : GFP_KERNEL), dma);
 }
 static inline void _rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr, dma_addr_t dma)
@@ -280,16 +280,20 @@ static inline u32 _rtw_down_sema(_sema *sema)
 }
 
 /*lock - mutex*/
+
 	typedef struct mutex		_mutex;
+
 static inline void _rtw_mutex_init(_mutex *pmutex)
 {
-	mutex_init(pmutex);	
+	mutex_init(pmutex);
 }
 
 static inline void _rtw_mutex_free(_mutex *pmutex)
 {
 	mutex_destroy(pmutex);
+
 }
+
 
 __inline static int _rtw_mutex_lock_interruptible(_mutex *pmutex)
 {
@@ -365,13 +369,9 @@ typedef struct	hlist_node	rtw_hlist_node;
 #define rtw_hlist_for_each_entry(pos, head, member) hlist_for_each_entry(pos, head, member)
 #define rtw_hlist_for_each_safe(pos, n, head) hlist_for_each_safe(pos, n, head)
 #define rtw_hlist_entry(ptr, type, member) hlist_entry(ptr, type, member)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
 #define rtw_hlist_for_each_entry_safe(pos, np, n, head, member) hlist_for_each_entry_safe(pos, n, head, member)
 #define rtw_hlist_for_each_entry_rcu(pos, node, head, member) hlist_for_each_entry_rcu(pos, head, member)
-#else
-#define rtw_hlist_for_each_entry_safe(pos, np, n, head, member) hlist_for_each_entry_safe(pos, np, n, head, member)
-#define rtw_hlist_for_each_entry_rcu(pos, node, head, member) hlist_for_each_entry_rcu(pos, node, head, member)
-#endif
+
 
 /* RCU */
 typedef struct rcu_head rtw_rcu_head;
@@ -380,9 +380,7 @@ typedef struct rcu_head rtw_rcu_head;
 #define rtw_rcu_assign_pointer(p, v) rcu_assign_pointer((p), (v))
 #define rtw_rcu_read_lock() rcu_read_lock()
 #define rtw_rcu_read_unlock() rcu_read_unlock()
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
 #define rtw_rcu_access_pointer(p) rcu_access_pointer(p)
-#endif
 
 /* rhashtable */
 #include "../os_dep/linux/rtw_rhashtable.h"
@@ -413,7 +411,11 @@ static inline void rtw_thread_enter(char *name)
 
 static inline void rtw_thread_exit(_completion *comp)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
+	complete_and_exit(comp, 0);
+#else
 	kthread_complete_and_exit(comp, 0);
+#endif
 }
 
 static inline _thread_hdl_ rtw_thread_start(int (*threadfn)(void *data),
@@ -453,6 +455,7 @@ static inline void flush_signals_thread(void)
 	if (signal_pending(current))
 		flush_signals(current);
 }
+
 
 typedef unsigned long systime;
 
@@ -517,7 +520,6 @@ static inline struct sk_buff *_rtw_pskb_copy(struct sk_buff *skb)
 	return pskb_copy(skb, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 }
 
-
 static inline u8 *rtw_skb_data(struct sk_buff *pkt)
 {
 	return pkt->data;
@@ -553,13 +555,13 @@ static inline void timer_hdl(struct timer_list *in_timer)
 }
 
 
+
 __inline static void _init_timer(_timer *ptimer, void *pfunc, void *cntx)
 {
 	ptimer->function = pfunc;
 	ptimer->arg = cntx;
 
 	timer_setup(&ptimer->timer, timer_hdl, 0);
-
 }
 
 __inline static void _set_timer(_timer *ptimer, u32 delay_time)
@@ -686,7 +688,6 @@ static inline gro_result_t _rtw_napi_gro_receive(struct napi_struct *napi, struc
 
 static inline void rtw_netif_wake_queue(struct net_device *pnetdev)
 {
-
 	netif_tx_wake_all_queues(pnetdev);
 }
 
@@ -697,7 +698,6 @@ static inline void rtw_netif_start_queue(struct net_device *pnetdev)
 
 static inline void rtw_netif_stop_queue(struct net_device *pnetdev)
 {
-
 	netif_tx_stop_all_queues(pnetdev);
 }
 static inline void rtw_netif_device_attach(struct net_device *pnetdev)
@@ -726,7 +726,7 @@ static inline int rtw_merge_string(char *dst, int dst_len, const char *src1, con
 	return len;
 }
 
-#define rtw_signal_process(pid, sig) kill_pid(find_vpid((pid)), (sig), 1)
+	#define rtw_signal_process(pid, sig) kill_pid(find_vpid((pid)), (sig), 1)
 
 
 /* Suspend lock prevent system from going suspend */

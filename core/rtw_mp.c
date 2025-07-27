@@ -14,9 +14,6 @@
  *****************************************************************************/
 #define _RTW_MP_C_
 #include <drv_types.h>
-#ifdef PLATFORM_FREEBSD
-	#include <sys/unistd.h>		/* for RFHIGHPID */
-#endif
 
 
 #ifdef CONFIG_MP_VHT_HW_TX_MODE
@@ -1518,7 +1515,7 @@ void rtw_mp_set_packet_tx(_adapter *padapter)
 		RTW_INFO("%s: malloc(%d) fail!!\n", __func__, pmp_priv->tx.buf_size);
 		return;
 	}
-	pmp_priv->tx.buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pmp_priv->tx.pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
+	pmp_priv->tx.buf = (u8 *)ALIGN((SIZE_PTR)(pmp_priv->tx.pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
 	ptr = pmp_priv->tx.buf;
 
 	_rtw_memset(pmp_priv->tx.desc, 0, TXDESC_SIZE);
@@ -1623,17 +1620,6 @@ void rtw_mp_set_packet_tx(_adapter *padapter)
 	pmp_priv->tx.PktTxThread = rtw_thread_start(mp_xmit_packet_thread, pmp_priv, "RTW_MP_THREAD");
 	if (pmp_priv->tx.PktTxThread == NULL)
 		RTW_ERR("Create PktTx Thread Fail !!!!!\n");
-#endif
-#ifdef PLATFORM_FREEBSD
-	{
-		struct proc *p;
-		struct thread *td;
-		pmp_priv->tx.PktTxThread = kproc_kthread_add(mp_xmit_packet_thread, pmp_priv,
-			&p, &td, RFHIGHPID, 0, "MPXmitThread", "MPXmitThread");
-
-		if (pmp_priv->tx.PktTxThread < 0)
-			RTW_INFO("Create PktTx Thread Fail !!!!!\n");
-	}
 #endif
 
 	Rtw_MPSetMacTxEDCA(padapter);

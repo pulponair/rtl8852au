@@ -88,78 +88,75 @@ void _dump_recv_priv(struct dvobj_priv *dvobj, _queue *pfree_recv_queue)
 
 #endif
 
-sint rtw_init_recv_priv(struct dvobj_priv *dvobj)
+int rtw_init_recv_priv(struct dvobj_priv *dvobj)
 {
-	sint i;
+	int i, res = _SUCCESS;
 	union recv_frame *precvframe;
-	sint	res = _SUCCESS;
 	struct recv_priv *precvpriv = &dvobj->recvpriv;
 
-	#ifdef CONFIG_RECV_THREAD_MODE
+#ifdef CONFIG_RECV_THREAD_MODE
 	_rtw_init_sema(&precvpriv->recv_sema, 0);
-	#endif
+#endif
 
 	_rtw_init_queue(&precvpriv->free_recv_queue);
-	#if 0
-	_rtw_init_queue(&precvpriv->uc_swdec_pending_queue);
-	#endif
 
 	precvpriv->dvobj = dvobj;
-
 	precvpriv->free_recvframe_cnt = NR_RECVFRAME;
 
 	rtw_os_recv_resource_init(precvpriv);
 
-	precvpriv->pallocated_frame_buf = rtw_zvmalloc(NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
-
-	if (precvpriv->pallocated_frame_buf == NULL) {
+	precvpriv->pallocated_frame_buf =
+		rtw_zvmalloc(NR_RECVFRAME * sizeof(union recv_frame));
+	if (!precvpriv->pallocated_frame_buf) {
 		res = _FAIL;
 		goto exit;
 	}
-	/* _rtw_memset(precvpriv->pallocated_frame_buf, 0, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ); */
 
-	precvpriv->precv_frame_buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(precvpriv->pallocated_frame_buf), RXFRAME_ALIGN_SZ);
-	/* precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf + RXFRAME_ALIGN_SZ - */
-	/*						((SIZE_PTR) (precvpriv->pallocated_frame_buf) &(RXFRAME_ALIGN_SZ-1)); */
+	precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf;
+	precvframe = (union recv_frame *)precvpriv->precv_frame_buf;
 
-	precvframe = (union recv_frame *) precvpriv->precv_frame_buf;
+	for (i = 0; i < NR_RECVFRAME; i++) {
+		_rtw_init_listhead(&precvframe->u.list);
+		rtw_list_insert_tail(&precvframe->u.list,
+				     &precvpriv->free_recv_queue.queue);
 
-
-	for (i = 0; i < NR_RECVFRAME ; i++) {
-		_rtw_init_listhead(&(precvframe->u.list));
-
-		rtw_list_insert_tail(&(precvframe->u.list), &(precvpriv->free_recv_queue.queue));
-
-		rtw_os_recv_resource_alloc(precvframe);
+		if (rtw_os_recv_resource_alloc(precvframe) != _SUCCESS) {
+			RTW_ERR("%s: rtw_os_recv_resource_alloc(%d) failed\n",
+				__func__, i);
+			res = _FAIL;
+			goto exit_free_frames;
+		}
 
 		precvframe->u.hdr.len = 0;
-
 		precvframe->u.hdr.dvobj = dvobj;
 		precvframe->u.hdr.adapter = NULL;
 		precvframe->u.hdr.rx_req = NULL;
 
 		precvframe++;
 	}
-	#ifdef DBG_RECV_FRAME
-	RTW_INFO("%s =>precvpriv->free_recvframe_cnt:%d\n", __func__, precvpriv->free_recvframe_cnt);
-	#endif
+
+#ifdef DBG_RECV_FRAME
+	RTW_INFO("%s => free_recvframe_cnt:%d\n",
+		 __func__, precvpriv->free_recvframe_cnt);
+#endif
 
 	res = rtw_intf_init_recv_priv(dvobj);
-	#ifdef DBG_RECV_FRAME
+#ifdef DBG_RECV_FRAME
 	_dump_recv_priv(dvobj, &dvobj->recvpriv.free_recv_queue);
-	#endif
+#endif
+	goto exit;
+
+exit_free_frames:
+	kvfree(precvpriv->pallocated_frame_buf);
+	precvpriv->pallocated_frame_buf = NULL;
+
 exit:
 	return res;
-
 }
 
 void rtw_free_recv_priv(struct dvobj_priv *dvobj)
 {
 	struct recv_priv *precvpriv = &dvobj->recvpriv;
-
-	#if 0
-	rtw_free_uc_swdec_pending_queue(dvobj);
-	#endif
 
 #ifdef CONFIG_RECV_THREAD_MODE
 	_rtw_free_sema(&precvpriv->recv_sema);
@@ -168,10 +165,10 @@ void rtw_free_recv_priv(struct dvobj_priv *dvobj)
 	rtw_os_recv_resource_free(precvpriv);
 
 	if (precvpriv->pallocated_frame_buf)
-		rtw_vmfree(precvpriv->pallocated_frame_buf, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
+		rtw_vmfree(precvpriv->pallocated_frame_buf,
+		           NR_RECVFRAME * sizeof(union recv_frame));
 
 	_rtw_deinit_queue(&precvpriv->free_recv_queue);
-
 	rtw_intf_free_recv_priv(dvobj);
 }
 
@@ -4576,154 +4573,146 @@ exit:
 
 u8 rtw_init_lite_recv_resource(struct dvobj_priv *dvobj)
 {
-	u8 ret = _SUCCESS;
-	u32 literecvbuf_nr = RTW_LITERECVBUF_NR;
-	struct lite_data_buf *literecvbuf;
-	struct trx_data_buf_q  *literecvbuf_q = &dvobj->literecvbuf_q;
-	int i;
+    u8 ret = _SUCCESS;
+    u32 literecvbuf_nr = RTW_LITERECVBUF_NR;
+    struct lite_data_buf *literecvbuf;
+    struct trx_data_buf_q  *literecvbuf_q = &dvobj->literecvbuf_q;
+    int i;
+
 #ifdef CONFIG_USB_HCI
-	struct data_urb *recvurb;
-	struct trx_urb_buf_q *recv_urb_q = &dvobj->recv_urb_q;
-	u32 recvurb_nr = RTW_RECVURB_NR;
+    struct data_urb *recvurb;
+    struct trx_urb_buf_q *recv_urb_q = &dvobj->recv_urb_q;
+    u32 recvurb_nr = RTW_RECVURB_NR;
+
 #ifdef CONFIG_USB_INTERRUPT_IN_PIPE
-	struct lite_data_buf *intinbuf;
-	struct trx_data_buf_q  *intin_buf_q = &dvobj->intin_buf_q;
-	u32 intin_buf_nr = RTW_INTINBUF_NR;
-	struct data_urb *intin_urb;
-	struct trx_urb_buf_q *intin_urb_q = &dvobj->intin_urb_q;
-	u32 intin_urb_nr = RTW_INTINURB_NR;
+    struct lite_data_buf *intinbuf;
+    struct trx_data_buf_q  *intin_buf_q = &dvobj->intin_buf_q;
+    u32 intin_buf_nr = RTW_INTINBUF_NR;
+    struct data_urb *intin_urb;
+    struct trx_urb_buf_q *intin_urb_q = &dvobj->intin_urb_q;
+    u32 intin_urb_nr = RTW_INTINURB_NR;
 #endif 
 #endif
 
-	/* init lite_recv_buf */
-	_rtw_init_queue(&literecvbuf_q->free_data_buf_queue);
+    /* init lite_recv_buf */
+    _rtw_init_queue(&literecvbuf_q->free_data_buf_queue);
 
-	literecvbuf_q->alloc_data_buf =
-		rtw_zvmalloc(literecvbuf_nr * sizeof(struct lite_data_buf) + 4);
+    literecvbuf_q->alloc_data_buf =
+        rtw_zvmalloc(literecvbuf_nr * sizeof(struct lite_data_buf));
+    if (!literecvbuf_q->alloc_data_buf) {
+        ret = _FAIL;
+        goto exit;
+    }
 
-	if (literecvbuf_q->alloc_data_buf  == NULL) {
-		ret = _FAIL;
-		goto exit;
-	}
+    literecvbuf_q->data_buf = (u8 *)literecvbuf_q->alloc_data_buf;
+    literecvbuf = (struct lite_data_buf *)literecvbuf_q->data_buf;
 
-	literecvbuf_q->data_buf=
-	(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(literecvbuf_q->alloc_data_buf), 4);
-
-	literecvbuf = (struct lite_data_buf *)literecvbuf_q->data_buf;
-
-	for (i = 0; i < literecvbuf_nr; i++) {
-		_rtw_init_listhead(&literecvbuf->list);
-		rtw_list_insert_tail(&literecvbuf->list,
-			&(literecvbuf_q->free_data_buf_queue.queue));
-		literecvbuf++;
-	}
-	literecvbuf_q->free_data_buf_cnt = literecvbuf_nr;
-
+    for (i = 0; i < literecvbuf_nr; i++) {
+        _rtw_init_listhead(&literecvbuf->list);
+        rtw_list_insert_tail(&literecvbuf->list,
+            &(literecvbuf_q->free_data_buf_queue.queue));
+        literecvbuf++;
+    }
+    literecvbuf_q->free_data_buf_cnt = literecvbuf_nr;
 
 #ifdef CONFIG_USB_HCI
-	/* init recv_urb */
-	_rtw_init_queue(&recv_urb_q->free_urb_buf_queue);
-	recv_urb_q->alloc_urb_buf=
-		rtw_zvmalloc(recvurb_nr * sizeof(struct data_urb) + 4);
-	if (recv_urb_q->alloc_urb_buf== NULL) {
-		ret = _FAIL;
-		goto exit;
-	}
+    /* init recv_urb */
+    _rtw_init_queue(&recv_urb_q->free_urb_buf_queue);
 
-	recv_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(recv_urb_q->alloc_urb_buf), 4);
+    recv_urb_q->alloc_urb_buf = rtw_zvmalloc(recvurb_nr * sizeof(struct data_urb));
+    if (!recv_urb_q->alloc_urb_buf) {
+        ret = _FAIL;
+        goto exit;
+    }
 
-	recvurb = (struct data_urb *)recv_urb_q->urb_buf;
-	for (i = 0; i < recvurb_nr; i++) {
-		_rtw_init_listhead(&recvurb->list);
-		ret = rtw_os_urb_resource_alloc(recvurb);
-		rtw_list_insert_tail(&recvurb->list,
-			&(recv_urb_q->free_urb_buf_queue.queue));
-		recvurb++;
-	}
-	recv_urb_q->free_urb_buf_cnt = recvurb_nr;
-	ATOMIC_SET(&(dvobj->rx_pending_cnt), 0);
+    recv_urb_q->urb_buf = (u8 *)recv_urb_q->alloc_urb_buf;
+    recvurb = (struct data_urb *)recv_urb_q->urb_buf;
+
+    for (i = 0; i < recvurb_nr; i++) {
+        _rtw_init_listhead(&recvurb->list);
+        ret = rtw_os_urb_resource_alloc(recvurb);
+        rtw_list_insert_tail(&recvurb->list,
+            &(recv_urb_q->free_urb_buf_queue.queue));
+        recvurb++;
+    }
+    recv_urb_q->free_urb_buf_cnt = recvurb_nr;
+    ATOMIC_SET(&(dvobj->rx_pending_cnt), 0);
 
 #ifdef CONFIG_USB_INTERRUPT_IN_PIPE
+    /* init int_in_buf */
+    _rtw_init_queue(&intin_buf_q->free_data_buf_queue);
 
-	/* init int_in_buf */
-	_rtw_init_queue(&intin_buf_q->free_data_buf_queue);
+    intin_buf_q->alloc_data_buf = rtw_zvmalloc(intin_buf_nr * sizeof(struct lite_data_buf));
+    if (!intin_buf_q->alloc_data_buf) {
+        ret = _FAIL;
+        goto exit;
+    }
 
-	intin_buf_q->alloc_data_buf =
-		rtw_zvmalloc(intin_buf_nr * sizeof(struct lite_data_buf) + 4);
+    intin_buf_q->data_buf = (u8 *)intin_buf_q->alloc_data_buf;
+    intinbuf = (struct lite_data_buf *)intin_buf_q->data_buf;
 
-	if (intin_buf_q->alloc_data_buf  == NULL) {
-		ret = _FAIL;
-		goto exit;
-	}
+    for (i = 0; i < intin_buf_nr; i++) {
+        _rtw_init_listhead(&intinbuf->list);
+        rtw_list_insert_tail(&intinbuf->list,
+            &(intin_buf_q->free_data_buf_queue.queue));
+        intinbuf++;
+    }
+    intin_buf_q->free_data_buf_cnt = intin_buf_nr;
 
-	intin_buf_q->data_buf=
-	(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(intin_buf_q->alloc_data_buf), 4);
+    /* init int_in_urb */
+    _rtw_init_queue(&intin_urb_q->free_urb_buf_queue);
+    intin_urb_q->alloc_urb_buf = rtw_zvmalloc(intin_urb_nr * sizeof(struct data_urb));
+    if (!intin_urb_q->alloc_urb_buf) {
+        ret = _FAIL;
+        goto exit;
+    }
 
-	intinbuf = (struct lite_data_buf *)intin_buf_q->data_buf;
+    intin_urb_q->urb_buf = (u8 *)intin_urb_q->alloc_urb_buf;
+    intin_urb = (struct data_urb *)intin_urb_q->urb_buf;
 
-	for (i = 0; i < intin_buf_nr; i++) {
-		_rtw_init_listhead(&intinbuf->list);
-		rtw_list_insert_tail(&intinbuf->list,
-			&(intin_buf_q->free_data_buf_queue.queue));
-		intinbuf++;
-	}
-	intin_buf_q->free_data_buf_cnt = intin_buf_nr;
-
-	/* init int_in_urb */
-	_rtw_init_queue(&intin_urb_q->free_urb_buf_queue);
-	intin_urb_q->alloc_urb_buf=
-		rtw_zvmalloc(intin_urb_nr * sizeof(struct data_urb) + 4);
-	if (intin_urb_q->alloc_urb_buf== NULL) {
-		ret = _FAIL;
-		goto exit;
-	}
-
-	intin_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(intin_urb_q->alloc_urb_buf), 4);
-
-	intin_urb = (struct data_urb *)intin_urb_q->urb_buf;
-	for (i = 0; i < intin_urb_nr; i++) {
-		_rtw_init_listhead(&intin_urb->list);
-		ret = rtw_os_urb_resource_alloc(intin_urb);
-		rtw_list_insert_tail(&intin_urb->list,
-			&(intin_urb_q->free_urb_buf_queue.queue));
-		intin_urb++;
-	}
-	intin_urb_q->free_urb_buf_cnt = intin_urb_nr;
+    for (i = 0; i < intin_urb_nr; i++) {
+        _rtw_init_listhead(&intin_urb->list);
+        ret = rtw_os_urb_resource_alloc(intin_urb);
+        rtw_list_insert_tail(&intin_urb->list,
+            &(intin_urb_q->free_urb_buf_queue.queue));
+        intin_urb++;
+    }
+    intin_urb_q->free_urb_buf_cnt = intin_urb_nr;
 #endif
 #endif
 
 exit:
-	return ret;
+    return ret;
 }
+
 
 void rtw_free_lite_recv_resource(struct dvobj_priv *dvobj)
 {
-	u8 ret = _SUCCESS;
 	u32 literecvbuf_nr = RTW_LITERECVBUF_NR;
-	struct lite_data_buf *literecvbuf;
 	struct trx_data_buf_q  *literecvbuf_q = &dvobj->literecvbuf_q;
 	int i;
+
 #ifdef CONFIG_USB_HCI
 	struct data_urb *recvurb;
 	struct trx_urb_buf_q *recv_urb_q = &dvobj->recv_urb_q;
 	u32 recvurb_nr = RTW_RECVURB_NR;
+
 #ifdef CONFIG_USB_INTERRUPT_IN_PIPE
-	struct lite_data_buf *intinbuf;
 	struct trx_data_buf_q *intin_buf_q = &dvobj->intin_buf_q;
 	u32 intin_buf_nr = RTW_INTINBUF_NR;
 	struct data_urb *intin_urb;
 	struct trx_urb_buf_q *intin_urb_q = &dvobj->intin_urb_q;
 	u32 intin_urb_nr = RTW_INTINURB_NR;
-#endif 
+#endif
 #endif
 
+	/* Free lite_recv_buf */
 	if (literecvbuf_q->alloc_data_buf)
 		rtw_vmfree(literecvbuf_q->alloc_data_buf,
-			literecvbuf_nr * sizeof(struct lite_data_buf) + 4);
+			literecvbuf_nr * sizeof(struct lite_data_buf));
 
 #ifdef CONFIG_USB_HCI
+	/* Free recv_urb */
 	recvurb = (struct data_urb *)recv_urb_q->urb_buf;
 	for (i = 0; i < recvurb_nr; i++) {
 		rtw_os_urb_resource_free(recvurb);
@@ -4732,14 +4721,15 @@ void rtw_free_lite_recv_resource(struct dvobj_priv *dvobj)
 
 	if (recv_urb_q->alloc_urb_buf)
 		rtw_vmfree(recv_urb_q->alloc_urb_buf,
-			recvurb_nr * sizeof(struct data_urb) + 4);
+			recvurb_nr * sizeof(struct data_urb));
 
 #ifdef CONFIG_USB_INTERRUPT_IN_PIPE
-
+	/* Free intin_buf */
 	if (intin_buf_q->alloc_data_buf)
 		rtw_vmfree(intin_buf_q->alloc_data_buf,
-			intin_buf_nr * sizeof(struct lite_data_buf) + 4);
+			intin_buf_nr * sizeof(struct lite_data_buf));
 
+	/* Free intin_urb */
 	intin_urb = (struct data_urb *)intin_urb_q->urb_buf;
 	for (i = 0; i < intin_urb_nr; i++) {
 		rtw_os_urb_resource_free(intin_urb);
@@ -4748,10 +4738,9 @@ void rtw_free_lite_recv_resource(struct dvobj_priv *dvobj)
 
 	if (intin_urb_q->alloc_urb_buf)
 		rtw_vmfree(intin_urb_q->alloc_urb_buf,
-			intin_urb_nr * sizeof(struct data_urb) + 4);
+			intin_urb_nr * sizeof(struct data_urb));
 #endif
 #endif
-
 }
 
 #ifdef RTW_PHL_RX

@@ -431,11 +431,9 @@ struct recv_priv {
 
 	uint free_recvframe_cnt;
 
-#if defined(PLATFORM_LINUX) || defined(PLATFORM_FREEBSD)
 #ifdef CONFIG_RTW_NAPI
 	struct sk_buff_head rx_napi_skb_queue;
 #endif
-#endif /* defined(PLATFORM_LINUX) || defined(PLATFORM_FREEBSD) */
 
 };
 

@@ -129,7 +129,7 @@ int rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_buf *pxmitbuf, u3
 		if (pxmitbuf->pallocated_buf == NULL)
 			return _FAIL;
 
-		pxmitbuf->pbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitbuf->pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
+		pxmitbuf->pbuf = (u8 *)ALIGN((SIZE_PTR)(pxmitbuf->pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
 
 #endif /* CONFIG_USE_USB_BUFFER_ALLOC_TX */
 	}
@@ -202,7 +202,7 @@ u8 rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_frame *pxframe)
 		rtw_warn_on(1);
 		return _FAIL;
 	}
-	pxframe->buf_addr = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxframe->prealloc_buf_addr), SZ_ALIGN_XMITFRAME_EXT);
+	pxframe->buf_addr = (u8 *)ALIGN((SIZE_PTR)(pxframe->prealloc_buf_addr), SZ_ALIGN_XMITFRAME_EXT);
 #endif
 	return _SUCCESS;
 }
