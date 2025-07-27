@@ -220,7 +220,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 		res = _FAIL;
 		goto exit;
 	}
-	pxmitpriv->pxmit_frame_buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_frame_buf), 4);
+	pxmitpriv->pxmit_frame_buf = (u8 *)ALIGN((SIZE_PTR)(pxmitpriv->pallocated_frame_buf), 4);
 	/* pxmitpriv->pxmit_frame_buf = pxmitpriv->pallocated_frame_buf + 4 - */
 	/*						((SIZE_PTR) (pxmitpriv->pallocated_frame_buf) &3); */
 
@@ -263,7 +263,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 		goto exit;
 	}
 
-	pxmitpriv->pxmitbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_xmitbuf), 4);
+	pxmitpriv->pxmitbuf = (u8 *)ALIGN((SIZE_PTR)(pxmitpriv->pallocated_xmitbuf), 4);
 	/* pxmitpriv->pxmitbuf = pxmitpriv->pallocated_xmitbuf + 4 - */
 	/*						((SIZE_PTR) (pxmitpriv->pallocated_xmitbuf) &3); */
 
@@ -320,7 +320,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 		res = _FAIL;
 		goto exit;
 	}
-	pxmitpriv->xframe_ext = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->xframe_ext_alloc_addr), 4);
+	pxmitpriv->xframe_ext = (u8 *)ALIGN((SIZE_PTR)(pxmitpriv->xframe_ext_alloc_addr), 4);
 	pxframe = (struct xmit_frame *)pxmitpriv->xframe_ext;
 
 	/* MGT_TXREQ_QMGT */
@@ -376,7 +376,7 @@ s32 _rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, _adapter *padapter)
 		goto exit;
 	}
 
-	pxmitpriv->pxmit_extbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitpriv->pallocated_xmit_extbuf), 4);
+	pxmitpriv->pxmit_extbuf = (u8 *)ALIGN((SIZE_PTR)(pxmitpriv->pallocated_xmit_extbuf), 4);
 
 	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmit_extbuf;
 
@@ -683,7 +683,7 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 	}
 
 	litexmitbuf_q->data_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(litexmitbuf_q->alloc_data_buf), 4);
+		(u8 *)ALIGN((SIZE_PTR)(litexmitbuf_q->alloc_data_buf), 4);
 
 	litexmitbuf = (struct lite_data_buf *)litexmitbuf_q->data_buf;
 
@@ -708,7 +708,7 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 	}
 
 	litexmit_extbuf_q->data_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(litexmit_extbuf_q->alloc_data_buf), 4);
+		(u8 *)ALIGN((SIZE_PTR)(litexmit_extbuf_q->alloc_data_buf), 4);
 
 	litexmitbuf = (struct lite_data_buf *)litexmit_extbuf_q->data_buf;
 
@@ -731,7 +731,7 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 	}
 
 	xmit_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(xmit_urb_q->alloc_urb_buf), 4);
+		(u8 *)ALIGN((SIZE_PTR)(xmit_urb_q->alloc_urb_buf), 4);
 
 	xmiturb = (struct data_urb *)xmit_urb_q->urb_buf;
 	for (i = 0; i < urb_nr; i++) {
@@ -5239,7 +5239,7 @@ struct xmit_frame *rtw_alloc_xmitframe_once(struct xmit_priv *pxmitpriv)
 	if (alloc_addr == NULL)
 		goto exit;
 
-	pxframe = (struct xmit_frame *)N_BYTE_ALIGMENT((SIZE_PTR)(alloc_addr), 4);
+	pxframe = (struct xmit_frame *)ALIGN((SIZE_PTR)(alloc_addr), 4);
 	pxframe->alloc_addr = alloc_addr;
 
 	pxframe->padapter = pxmitpriv->adapter;

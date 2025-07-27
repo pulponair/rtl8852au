@@ -304,10 +304,6 @@ enum {
 		} \
 	} while (0)
 
-/* Get the N-bytes aligment offset from the current length */
-#define N_BYTE_ALIGMENT(__Value, __Aligment) ((__Aligment == 1) ? (__Value) : (((__Value + __Aligment - 1) / __Aligment) * __Aligment))
-#define N_BYTE_ALIGNMENT(__Value, __Alignment) ((__Alignment == 1)\
-? (__Value) : (((__Value + __Alignment - 1) / __Alignment) * __Alignment))
 
 typedef unsigned char	BOOLEAN, *PBOOLEAN, boolean;
 

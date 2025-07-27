@@ -118,7 +118,7 @@ sint rtw_init_recv_priv(struct dvobj_priv *dvobj)
 	}
 	/* _rtw_memset(precvpriv->pallocated_frame_buf, 0, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ); */
 
-	precvpriv->precv_frame_buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(precvpriv->pallocated_frame_buf), RXFRAME_ALIGN_SZ);
+	precvpriv->precv_frame_buf = (u8 *)ALIGN((SIZE_PTR)(precvpriv->pallocated_frame_buf), RXFRAME_ALIGN_SZ);
 	/* precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf + RXFRAME_ALIGN_SZ - */
 	/*						((SIZE_PTR) (precvpriv->pallocated_frame_buf) &(RXFRAME_ALIGN_SZ-1)); */
 
@@ -4607,7 +4607,7 @@ u8 rtw_init_lite_recv_resource(struct dvobj_priv *dvobj)
 	}
 
 	literecvbuf_q->data_buf=
-	(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(literecvbuf_q->alloc_data_buf), 4);
+	(u8 *)ALIGN((SIZE_PTR)(literecvbuf_q->alloc_data_buf), 4);
 
 	literecvbuf = (struct lite_data_buf *)literecvbuf_q->data_buf;
 
@@ -4631,7 +4631,7 @@ u8 rtw_init_lite_recv_resource(struct dvobj_priv *dvobj)
 	}
 
 	recv_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(recv_urb_q->alloc_urb_buf), 4);
+		(u8 *)ALIGN((SIZE_PTR)(recv_urb_q->alloc_urb_buf), 4);
 
 	recvurb = (struct data_urb *)recv_urb_q->urb_buf;
 	for (i = 0; i < recvurb_nr; i++) {
@@ -4658,7 +4658,7 @@ u8 rtw_init_lite_recv_resource(struct dvobj_priv *dvobj)
 	}
 
 	intin_buf_q->data_buf=
-	(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(intin_buf_q->alloc_data_buf), 4);
+	(u8 *)ALIGN((SIZE_PTR)(intin_buf_q->alloc_data_buf), 4);
 
 	intinbuf = (struct lite_data_buf *)intin_buf_q->data_buf;
 
@@ -4680,7 +4680,7 @@ u8 rtw_init_lite_recv_resource(struct dvobj_priv *dvobj)
 	}
 
 	intin_urb_q->urb_buf =
-		(u8 *)N_BYTE_ALIGNMENT((SIZE_PTR)(intin_urb_q->alloc_urb_buf), 4);
+		(u8 *)ALIGN((SIZE_PTR)(intin_urb_q->alloc_urb_buf), 4);
 
 	intin_urb = (struct data_urb *)intin_urb_q->urb_buf;
 	for (i = 0; i < intin_urb_nr; i++) {

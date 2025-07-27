@@ -177,7 +177,7 @@ static u8 rtw_init_intf_priv(struct dvobj_priv *dvobj)
 		goto exit;
 	}
 	pusb_data->usb_vendor_req_buf  =
-		(u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pusb_data->usb_alloc_vendor_req_buf), ALIGNMENT_UNIT);
+		(u8 *)ALIGN((SIZE_PTR)(pusb_data->usb_alloc_vendor_req_buf), ALIGNMENT_UNIT);
 exit:
 #endif
 

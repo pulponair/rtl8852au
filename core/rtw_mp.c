@@ -1518,7 +1518,7 @@ void rtw_mp_set_packet_tx(_adapter *padapter)
 		RTW_INFO("%s: malloc(%d) fail!!\n", __func__, pmp_priv->tx.buf_size);
 		return;
 	}
-	pmp_priv->tx.buf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pmp_priv->tx.pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
+	pmp_priv->tx.buf = (u8 *)ALIGN((SIZE_PTR)(pmp_priv->tx.pallocated_buf), SZ_ALIGN_XMITFRAME_EXT);
 	ptr = pmp_priv->tx.buf;
 
 	_rtw_memset(pmp_priv->tx.desc, 0, TXDESC_SIZE);
