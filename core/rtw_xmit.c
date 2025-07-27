@@ -654,17 +654,17 @@ out:
 	return;
 }
 
+
 u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 {
-
 	u8 ret = _SUCCESS;
-/*YiWei_todo need use correct litexmitbuf_nr urb_nr*/
 	u32 litexmitbuf_nr = RTW_LITEXMITBUF_NR;
 	u32 litexmitbuf_ext_nr = RTW_LITEXMITBUF_NR;
 	struct lite_data_buf *litexmitbuf;
-	struct trx_data_buf_q  *litexmitbuf_q = &dvobj->litexmitbuf_q;
-	struct trx_data_buf_q  *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+	struct trx_data_buf_q *litexmitbuf_q = &dvobj->litexmitbuf_q;
+	struct trx_data_buf_q *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
 	int i;
+
 #ifdef CONFIG_USB_HCI
 	struct trx_urb_buf_q *xmit_urb_q = &dvobj->xmit_urb_q;
 	struct data_urb *xmiturb;
@@ -674,48 +674,37 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 	/* init lite_xmit_buf */
 	_rtw_init_queue(&litexmitbuf_q->free_data_buf_queue);
 
-	litexmitbuf_q->alloc_data_buf =
-		rtw_zvmalloc(litexmitbuf_nr * sizeof(struct lite_data_buf) + 4);
-
-	if (litexmitbuf_q->alloc_data_buf  == NULL) {
+	litexmitbuf_q->data_buf =
+		rtw_zvmalloc(litexmitbuf_nr * sizeof(struct lite_data_buf));
+	if (!litexmitbuf_q->data_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
 
-	litexmitbuf_q->data_buf =
-		(u8 *)ALIGN((SIZE_PTR)(litexmitbuf_q->alloc_data_buf), 4);
-
 	litexmitbuf = (struct lite_data_buf *)litexmitbuf_q->data_buf;
-
 	for (i = 0; i < litexmitbuf_nr; i++) {
 		_rtw_init_listhead(&litexmitbuf->list);
 		rtw_list_insert_tail(&litexmitbuf->list,
-			&(litexmitbuf_q->free_data_buf_queue.queue));
+			&litexmitbuf_q->free_data_buf_queue.queue);
 		litexmitbuf++;
 	}
 	litexmitbuf_q->free_data_buf_cnt = litexmitbuf_nr;
 
-
-	/* Init lite xmit extension buff */
+	/* init lite_xmit_ext_buf */
 	_rtw_init_queue(&litexmit_extbuf_q->free_data_buf_queue);
 
-	litexmit_extbuf_q->alloc_data_buf =
-		rtw_zvmalloc(litexmitbuf_ext_nr * sizeof(struct lite_data_buf) + 4);
-
-	if (litexmit_extbuf_q->alloc_data_buf  == NULL) {
+	litexmit_extbuf_q->data_buf =
+		rtw_zvmalloc(litexmitbuf_ext_nr * sizeof(struct lite_data_buf));
+	if (!litexmit_extbuf_q->data_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
 
-	litexmit_extbuf_q->data_buf =
-		(u8 *)ALIGN((SIZE_PTR)(litexmit_extbuf_q->alloc_data_buf), 4);
-
 	litexmitbuf = (struct lite_data_buf *)litexmit_extbuf_q->data_buf;
-
 	for (i = 0; i < litexmitbuf_ext_nr; i++) {
 		_rtw_init_listhead(&litexmitbuf->list);
 		rtw_list_insert_tail(&litexmitbuf->list,
-			&(litexmit_extbuf_q->free_data_buf_queue.queue));
+			&litexmit_extbuf_q->free_data_buf_queue.queue);
 		litexmitbuf++;
 	}
 	litexmit_extbuf_q->free_data_buf_cnt = litexmitbuf_ext_nr;
@@ -723,22 +712,22 @@ u8 rtw_init_lite_xmit_resource(struct dvobj_priv *dvobj)
 #ifdef CONFIG_USB_HCI
 	/* init xmit_urb */
 	_rtw_init_queue(&xmit_urb_q->free_urb_buf_queue);
-	xmit_urb_q->alloc_urb_buf =
-		rtw_zvmalloc(urb_nr * sizeof(struct data_urb) + 4);
-	if (xmit_urb_q->alloc_urb_buf == NULL) {
+
+	xmit_urb_q->urb_buf =
+		rtw_zvmalloc(urb_nr * sizeof(struct data_urb));
+	if (!xmit_urb_q->urb_buf) {
 		ret = _FAIL;
 		goto exit;
 	}
-
-	xmit_urb_q->urb_buf =
-		(u8 *)ALIGN((SIZE_PTR)(xmit_urb_q->alloc_urb_buf), 4);
 
 	xmiturb = (struct data_urb *)xmit_urb_q->urb_buf;
 	for (i = 0; i < urb_nr; i++) {
 		_rtw_init_listhead(&xmiturb->list);
 		ret = rtw_os_urb_resource_alloc(xmiturb);
+		if (ret == _FAIL)
+			goto exit;
 		rtw_list_insert_tail(&xmiturb->list,
-			&(xmit_urb_q->free_urb_buf_queue.queue));
+			&xmit_urb_q->free_urb_buf_queue.queue);
 		xmiturb++;
 	}
 	xmit_urb_q->free_urb_buf_cnt = urb_nr;
@@ -750,12 +739,11 @@ exit:
 
 void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 {
-	u8 ret = _SUCCESS;
-/*YiWei_todo need use correct litexmitbuf_nr urb_nr*/
 	u32 litexmitbuf_nr = RTW_LITEXMITBUF_NR;
 	u32 litexmitbuf_ext_nr = RTW_LITEXMITBUF_NR;
-	struct trx_data_buf_q  *litexmitbuf_q = &dvobj->litexmitbuf_q;
-	struct trx_data_buf_q  *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+	struct trx_data_buf_q *litexmitbuf_q = &dvobj->litexmitbuf_q;
+	struct trx_data_buf_q *litexmit_extbuf_q = &dvobj->litexmit_extbuf_q;
+
 #ifdef CONFIG_USB_HCI
 	struct data_urb *xmiturb;
 	struct trx_urb_buf_q *xmit_urb_q = &dvobj->xmit_urb_q;
@@ -763,13 +751,13 @@ void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 	int i;
 #endif
 
-	if (litexmitbuf_q->alloc_data_buf)
-		rtw_vmfree(litexmitbuf_q->alloc_data_buf,
-			litexmitbuf_nr * sizeof(struct lite_data_buf) + 4);
+	if (litexmitbuf_q->data_buf)
+		rtw_vmfree(litexmitbuf_q->data_buf,
+			litexmitbuf_nr * sizeof(struct lite_data_buf));
 
-	if (litexmit_extbuf_q->alloc_data_buf)
-		rtw_vmfree(litexmit_extbuf_q->alloc_data_buf,
-			litexmitbuf_ext_nr * sizeof(struct lite_data_buf) + 4);
+	if (litexmit_extbuf_q->data_buf)
+		rtw_vmfree(litexmit_extbuf_q->data_buf,
+			litexmitbuf_ext_nr * sizeof(struct lite_data_buf));
 
 #ifdef CONFIG_USB_HCI
 	xmiturb = (struct data_urb *)xmit_urb_q->urb_buf;
@@ -778,12 +766,15 @@ void rtw_free_lite_xmit_resource(struct dvobj_priv *dvobj)
 		xmiturb++;
 	}
 
-	if (xmit_urb_q->alloc_urb_buf)
-		rtw_vmfree(xmit_urb_q->alloc_urb_buf,
-			urb_nr * sizeof(struct data_urb) + 4);
+	if (xmit_urb_q->urb_buf)
+		rtw_vmfree(xmit_urb_q->urb_buf,
+			urb_nr * sizeof(struct data_urb));
 #endif
-
 }
+
+
+
+
 
 
 u8 rtw_get_tx_bw_mode(_adapter *adapter, struct sta_info *sta)

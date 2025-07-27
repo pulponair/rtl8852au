@@ -107,18 +107,18 @@ extern ATOMIC_T _malloc_size;
 
 static inline void *_rtw_vmalloc(u32 sz)
 {
-	void *pbuf;
+    void *pbuf;
 
-	pbuf = vmalloc(sz);
+    pbuf = kvmalloc(sz, GFP_KERNEL);  
 
 #ifdef DBG_MEMORY_LEAK
-	if (pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
 #endif /* DBG_MEMORY_LEAK */
 
-	return pbuf;
+    return pbuf;
 }
 
 static inline void *_rtw_zvmalloc(u32 sz)
@@ -134,65 +134,66 @@ static inline void *_rtw_zvmalloc(u32 sz)
 
 static inline void _rtw_vmfree(void *pbuf, u32 sz)
 {
-	vfree(pbuf);
+    kvfree(pbuf);  // sicher für kmalloc/vmalloc Speicher
 
 #ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
+    atomic_dec(&_malloc_cnt);
+    atomic_sub(sz, &_malloc_size);
 #endif /* DBG_MEMORY_LEAK */
 }
 
 static inline void *_rtw_malloc(u32 sz)
 {
-	void *pbuf = NULL;
+    void *pbuf = NULL;
 
-	#ifdef RTK_DMP_PLATFORM
-	if (sz > 0x4000)
-		pbuf = dvr_malloc(sz);
-	else
-	#endif
-		pbuf = kmalloc(sz, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+#ifdef RTK_DMP_PLATFORM
+    if (sz > 0x4000)
+        pbuf = dvr_malloc(sz);
+    else
+#endif
+        /* Defensive: wenn wir im Interrupt sind, KEIN vmalloc-Fallback */
+        pbuf = in_interrupt() ? kmalloc(sz, GFP_ATOMIC)
+                              : kvmalloc(sz, GFP_KERNEL);
 
 #ifdef DBG_MEMORY_LEAK
-	if (pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
-#endif /* DBG_MEMORY_LEAK */
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
+#endif
 
-	return pbuf;
-
+    return pbuf;
 }
 
 static inline void *_rtw_zmalloc(u32 sz)
 {
-#if 0
-	void *pbuf = _rtw_malloc(sz);
+    void *pbuf = in_interrupt()
+        ? kzalloc(sz, GFP_ATOMIC)
+        : kvzalloc(sz, GFP_KERNEL);
 
-	if (pbuf != NULL)
-		memset(pbuf, 0, sz);
-#else
-	/*kzalloc in KERNEL_VERSION(2, 6, 14)*/
-	void *pbuf = kzalloc( sz, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+#ifdef DBG_MEMORY_LEAK
+    if (pbuf != NULL) {
+        atomic_inc(&_malloc_cnt);
+        atomic_add(sz, &_malloc_size);
+    }
+#endif /* DBG_MEMORY_LEAK */
 
-#endif
-	return pbuf;
+    return pbuf;
 }
 
 static inline void _rtw_mfree(void *pbuf, u32 sz)
 {
-	#ifdef RTK_DMP_PLATFORM
-	if (sz > 0x4000)
-		dvr_free(pbuf);
-	else
-	#endif
-		kfree(pbuf);
+    #ifdef RTK_DMP_PLATFORM
+    if (sz > 0x4000)
+        dvr_free(pbuf);
+    else
+    #endif
+        kvfree(pbuf);  // statt kfree
 
 #ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
+    atomic_dec(&_malloc_cnt);
+    atomic_sub(sz, &_malloc_size);
 #endif /* DBG_MEMORY_LEAK */
-
 }
 
 #ifdef CONFIG_USB_HCI
