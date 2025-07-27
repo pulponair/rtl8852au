@@ -722,9 +722,15 @@ void halbb_parsing_cfo(struct bb_info *bb, s16 cfo, struct physts_rxd *desc)
 	/* Calcute throughput from rx rate idx*/
 	if (rate_info->mode == BB_HE_MODE) {
 		/* HE[3.2] = VHT[LGI]x1.25*/
+		int idx = fw_rate_idx - MAX_RATE_VHT - MAX_RATE_HT;
+		if (idx < 0 || idx >= MAX_RATE_HE) {
+			RTW_ERR("%s: Invalid HE rate index! mode=%u fw_rate_idx=%u (calc idx=%d)\n",
+					__func__, rate_info->mode, fw_rate_idx, idx);
+			return; 
+		}
 		bb_cfo_trk->tp[macid] +=
-		((bb_phy_rate_table[fw_rate_idx - MAX_RATE_VHT - MAX_RATE_HT] << 2)
-		+ bb_phy_rate_table[fw_rate_idx - MAX_RATE_VHT - MAX_RATE_HT]) >> 2;
+			((bb_phy_rate_table[idx] << 2) + bb_phy_rate_table[idx]) >> 2;
+
 	} else if (rate_info->mode == BB_VHT_MODE) {
 		bb_cfo_trk->tp[macid] += bb_phy_rate_table[fw_rate_idx - MAX_RATE_HT];
 	} else {
