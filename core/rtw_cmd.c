@@ -30,59 +30,46 @@ u32 rtw_init_cmd_priv(struct dvobj_priv *dvobj)
 	struct cmd_priv *pcmdpriv = &dvobj->cmdpriv;
 
 	pcmdpriv->dvobj = dvobj;
-	#if 0 /*#ifdef CONFIG_CORE_CMD_THREAD*/
-	_rtw_init_sema(&(pcmdpriv->cmd_queue_sema), 0);
-	_rtw_init_sema(&(pcmdpriv->start_cmdthread_sema), 0);
-	_rtw_init_queue(&(pcmdpriv->cmd_queue));
-	#endif
-
-	/* allocate DMA-able/Non-Page memory for cmd_buf and rsp_buf */
-
 	pcmdpriv->cmd_seq = 1;
 
-	pcmdpriv->cmd_allocated_buf = rtw_zmalloc(MAX_CMDSZ + CMDBUFF_ALIGN_SZ);
-
-	if (pcmdpriv->cmd_allocated_buf == NULL) {
+	/* allocate memory for cmd_buf */
+	pcmdpriv->cmd_buf = rtw_zmalloc(MAX_CMDSZ);
+	if (!pcmdpriv->cmd_buf) {
 		res = _FAIL;
 		goto exit;
 	}
+	pcmdpriv->cmd_allocated_buf = pcmdpriv->cmd_buf;
 
-	pcmdpriv->cmd_buf = pcmdpriv->cmd_allocated_buf + CMDBUFF_ALIGN_SZ - ((SIZE_PTR)(pcmdpriv->cmd_allocated_buf) & (CMDBUFF_ALIGN_SZ - 1));
-
-	pcmdpriv->rsp_allocated_buf = rtw_zmalloc(MAX_RSPSZ + 4);
-
-	if (pcmdpriv->rsp_allocated_buf == NULL) {
+	/* allocate memory for rsp_buf */
+	pcmdpriv->rsp_buf = rtw_zmalloc(MAX_RSPSZ);
+	if (!pcmdpriv->rsp_buf) {
 		res = _FAIL;
-		goto exit;
+		goto exit_free_cmd;
 	}
-
-	pcmdpriv->rsp_buf = pcmdpriv->rsp_allocated_buf  +  4 - ((SIZE_PTR)(pcmdpriv->rsp_allocated_buf) & 3);
+	pcmdpriv->rsp_allocated_buf = pcmdpriv->rsp_buf;
 
 	pcmdpriv->cmd_issued_cnt = 0;
-
 	_rtw_mutex_init(&pcmdpriv->sctx_mutex);
-
 	ATOMIC_SET(&pcmdpriv->event_seq, 0);
 	pcmdpriv->evt_done_cnt = 0;
+
+	goto exit;
+
+exit_free_cmd:
+	rtw_mfree(pcmdpriv->cmd_allocated_buf, MAX_CMDSZ);
+	pcmdpriv->cmd_allocated_buf = NULL;
 exit:
 	return res;
-
 }
-
 void rtw_free_cmd_priv(struct dvobj_priv *dvobj)
 {
 	struct cmd_priv *pcmdpriv = &dvobj->cmdpriv;
 
-	#if 0 /*#ifdef CONFIG_CORE_CMD_THREAD*/
-	_rtw_spinlock_free(&(pcmdpriv->cmd_queue.lock));
-	_rtw_free_sema(&(pcmdpriv->cmd_queue_sema));
-	_rtw_free_sema(&(pcmdpriv->start_cmdthread_sema));
-	#endif
 	if (pcmdpriv->cmd_allocated_buf)
-		rtw_mfree(pcmdpriv->cmd_allocated_buf, MAX_CMDSZ + CMDBUFF_ALIGN_SZ);
+		rtw_mfree(pcmdpriv->cmd_allocated_buf, MAX_CMDSZ);
 
 	if (pcmdpriv->rsp_allocated_buf)
-		rtw_mfree(pcmdpriv->rsp_allocated_buf, MAX_RSPSZ + 4);
+		rtw_mfree(pcmdpriv->rsp_allocated_buf, MAX_RSPSZ);
 
 	_rtw_mutex_free(&pcmdpriv->sctx_mutex);
 }
