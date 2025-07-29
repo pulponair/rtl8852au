@@ -649,7 +649,15 @@ rtw_phl_get_tx_fail_rpt(void *phl, struct rtw_phl_stainfo_t *phl_sta, u32 *tx_fa
 enum rtw_phl_status
 rtw_phl_get_tx_retry_rpt(void *phl, struct rtw_phl_stainfo_t *phl_sta, u32 *tx_retry_cnt,
  enum phl_ac_queue qsel);
+
+
+ 
+
 #endif /* CONFIG_USB_HCI */
+
+
+
+
 
 void rtw_phl_dbg_dump_rx(void *phl, struct rtw_wifi_role_t *wrole);
 #endif /*_PHL_API_H_*/

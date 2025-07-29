@@ -127,11 +127,9 @@ extern uint rtw_drv_log_level;
 	} while (0)
 
 #undef RTW_INFO
-#define RTW_INFO(fmt, arg...)     \
-	do {\
-		if (_DRV_INFO_ <= rtw_drv_log_level) {\
-			_dbgdump(DBG_PREFIX fmt, DBG_PREFIX_ARG, ##arg);\
-		} \
+#define RTW_INFO(fmt, ...) \
+	do { \
+		printk(KERN_INFO "[RTW] " fmt, ##__VA_ARGS__); \
 	} while (0)
 
 

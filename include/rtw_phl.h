@@ -116,3 +116,4 @@ u8 rtw_hw_wow(struct _ADAPTER *a, u8 wow_en);
 u8 rtw_hw_mcc_chk_inprogress(struct _ADAPTER *a);
 #endif
 #endif /* _RTW_HW_H_ */
+int rtw_get_sta_tx_stat(_adapter *adapter, struct sta_info *sta);

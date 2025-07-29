@@ -2176,3 +2176,44 @@ u8 rtw_hw_wow(struct _ADAPTER *a, u8 wow_en)
 	return _SUCCESS;
 }
 #endif
+
+static u32 rtw_tx_sts_total(u32 *tx_sts, u8 num)
+{
+	u32 ret = 0;
+	int i = 0;
+
+	for (i = 0; i < num; i++)
+		ret += tx_sts[i];
+	return ret;
+}
+
+int rtw_get_sta_tx_stat(_adapter *adapter, struct sta_info *psta)
+{
+#if defined(CONFIG_USB_HCI) || defined(CONFIG_PCI_HCI)
+	struct stainfo_stats	*pstats = NULL;
+
+	u32 tx_retry_cnt[PHL_AC_QUEUE_TOTAL] = {0};
+	u32 tx_fail_cnt[PHL_AC_QUEUE_TOTAL] = {0};
+	u32 tx_ok_cnt[PHL_AC_QUEUE_TOTAL] = {0};
+	// @todo introduce reset paramter 
+	rtw_phl_get_tx_retry_rpt(GET_PHL_INFO(adapter_to_dvobj(adapter)),
+				    psta->phl_sta, tx_retry_cnt,
+				    PHL_AC_QUEUE_TOTAL);
+	rtw_phl_get_tx_fail_rpt(GET_PHL_INFO(adapter_to_dvobj(adapter)), psta->phl_sta,
+		tx_fail_cnt, PHL_AC_QUEUE_TOTAL);
+	rtw_phl_get_tx_ok_rpt(GET_PHL_INFO(adapter_to_dvobj(adapter)), psta->phl_sta,
+		tx_ok_cnt, PHL_AC_QUEUE_TOTAL);
+	pstats = &psta->sta_stats;
+	pstats->tx_retry_cnt = rtw_tx_sts_total(tx_retry_cnt, PHL_AC_QUEUE_TOTAL);
+	pstats->tx_fail_cnt = rtw_tx_sts_total(tx_fail_cnt, PHL_AC_QUEUE_TOTAL);
+	pstats->tx_ok_cnt =  rtw_tx_sts_total(tx_ok_cnt, PHL_AC_QUEUE_TOTAL);
+	pstats->total_tx_retry_cnt += pstats->tx_retry_cnt;
+
+	pstats->tx_fail_cnt_sum += pstats->tx_fail_cnt;
+	pstats->tx_retry_cnt_sum += pstats->tx_retry_cnt;
+#else
+	RTW_INFO("%s() not support\n", __func__);
+#endif
+
+	return 0;
+}

@@ -34,6 +34,7 @@
 #define STATION_INFO_TX_BITRATE		BIT(NL80211_STA_INFO_TX_BITRATE)
 #define STATION_INFO_RX_PACKETS		BIT(NL80211_STA_INFO_RX_PACKETS)
 #define STATION_INFO_TX_PACKETS		BIT(NL80211_STA_INFO_TX_PACKETS)
+#define STATION_INFO_TX_RETRIES		BIT(NL80211_STA_INFO_TX_RETRIES)
 #define STATION_INFO_TX_FAILED		BIT(NL80211_STA_INFO_TX_FAILED)
 #define STATION_INFO_RX_BITRATE		BIT(NL80211_STA_INFO_RX_BITRATE)
 #define STATION_INFO_LOCAL_PM		BIT(NL80211_STA_INFO_LOCAL_PM)
@@ -2375,7 +2376,6 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 #endif
 
 	sinfo->filled = 0;
-
 	if (!mac) {
 		RTW_INFO(FUNC_NDEV_FMT" mac==%p\n", FUNC_NDEV_ARG(ndev), mac);
 		ret = -ENOENT;
@@ -2453,9 +2453,6 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 		}
 		sinfo->filled |= STATION_INFO_CONNECTED_TIME;
 
-		
-		sinfo->filled |= STATION_INFO_TX_FAILED;
-		sinfo->tx_failed = psta->sta_stats.tx_fail_cnt;
 
 		sinfo->filled |= STATION_INFO_TX_BITRATE;
 		rtw_rate_idx = rtw_get_current_tx_rate(padapter, psta);
@@ -2467,6 +2464,13 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 		sinfo->filled |= STATION_INFO_RX_BITRATE;
 		rtw_get_current_rx_info(padapter, psta, &rtw_rate_idx, &bw, &sgi);
 		sta_set_rate_info(padapter, &sinfo->rxrate, rtw_rate_idx, sgi, bw);
+
+		if (rtw_get_sta_tx_stat(padapter, psta) != -ENOTSUPP) {
+			sinfo->filled |= STATION_INFO_TX_FAILED;
+			sinfo->filled |= STATION_INFO_TX_RETRIES;
+			sinfo->tx_failed = psta->sta_stats.tx_fail_cnt_sum;
+			sinfo->tx_retries = psta->sta_stats.tx_retry_cnt_sum;
+		}
 
 	}
 
@@ -5655,7 +5659,7 @@ static struct sta_info *rtw_sta_info_get_by_idx(struct sta_priv *pstapriv, const
 static int	cfg80211_rtw_dump_station(struct wiphy *wiphy, struct net_device *ndev,
 		int idx, u8 *mac, struct station_info *sinfo)
 {
-#define DBG_DUMP_STATION 0
+#define DBG_DUMP_STATION 1
 
 	int ret = 0;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
@@ -5672,6 +5676,7 @@ static int	cfg80211_rtw_dump_station(struct wiphy *wiphy, struct net_device *nde
 	_rtw_spinlock_bh(&pstapriv->asoc_list_lock);
 	psta = rtw_sta_info_get_by_idx(pstapriv, idx, &asoc_list_num);
 	_rtw_spinunlock_bh(&pstapriv->asoc_list_lock);
+
 
 #ifdef CONFIG_RTW_MESH
 	if (MLME_IS_MESH(padapter)) {

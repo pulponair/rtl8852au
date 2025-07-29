@@ -163,7 +163,10 @@ struct	stainfo_stats	{
 	u32 rxratecnt[128];	/* Read & Clear, in proc_get_rx_stat() */
 	u32 tx_ok_cnt;		/* Read & Clear, in proc_get_tx_stat() */
 	u32 tx_fail_cnt;	/* Read & Clear, in proc_get_tx_stat() */
+	u32 tx_fail_cnt_sum;	/* cumulative counts */
 	u32 tx_retry_cnt;	/* Read & Clear, in proc_get_tx_stat() */
+	u32 tx_retry_cnt_sum;	/* cumulative counts */
+	u64 total_tx_retry_cnt;
 	#ifdef ROKU_PRIVATE
 	u64 total_tx_retry_cnt;
 	u32 rx_retry_cnt;

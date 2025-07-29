@@ -112,10 +112,10 @@ EXTRA_CFLAGS += -DCONFIG_RTW_ANDROID=$(CONFIG_RTW_ANDROID)
 endif
 
 ########################## Debug ###########################
-CONFIG_RTW_DEBUG = 0
+CONFIG_RTW_DEBUG = y
 # default log level is _DRV_WARNING_ = 3,
 # please refer to "How_to_set_driver_debug_log_level.doc" to set the available level.
-CONFIG_RTW_LOG_LEVEL = 3
+CONFIG_RTW_LOG_LEVEL = 4
 
 # enable /proc/net/rtlxxxx/ debug interfaces
 CONFIG_PROC_DEBUG = n
