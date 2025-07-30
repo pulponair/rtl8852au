@@ -109,6 +109,8 @@ static struct net_device_stats *rtw_net_get_stats(struct net_device *pnetdev)
 	return &padapter->stats;
 }
 
+
+
 /*
  * AC to queue mapping
  *
@@ -288,6 +290,7 @@ static const struct net_device_ops rtw_netdev_ops = {
 	.ndo_select_queue	= rtw_select_queue,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
 	.ndo_get_stats = rtw_net_get_stats,
+	//.ndo_get_stats64  = rtw_get_stats64,  
 	.ndo_do_ioctl = rtw_ioctl,
 };
 
