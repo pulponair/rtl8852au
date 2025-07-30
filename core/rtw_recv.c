@@ -5440,6 +5440,7 @@ enum rtw_phl_status rtw_core_rx_process(void *drv_priv)
 			goto rx_next;
 
 		if(rtw_core_rx_data_post_process(adapter, prframe) == CORE_RX_DONE)
+			adapter->recvinfo.rx_pkts++;
 			continue;
 
 rx_next:
