@@ -174,12 +174,13 @@ u16 rtw_os_recv_select_queue(u8 *msdu, enum rtw_rx_llc_hdl llc_hdl)
 	return rtw_1d_to_queue[priority];
 }
 
-static u8 is_rtw_ndev(struct net_device *ndev)
+static inline bool is_rtw_ndev(struct net_device *ndev)
 {
-	return ndev->netdev_ops
-		&& ndev->netdev_ops->ndo_do_ioctl
-		&& ndev->netdev_ops->ndo_do_ioctl == rtw_ioctl;
+	return ndev &&
+		   ndev->netdev_ops &&
+		   ndev->netdev_ops->ndo_get_stats64 == rtw_net_get_stats64;
 }
+
 
 
 #define _netdev_status_msg(_ndev, state, sts_str)		\
@@ -287,7 +288,6 @@ static const struct net_device_ops rtw_netdev_ops = {
 	.ndo_select_queue	= rtw_select_queue,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
 	.ndo_get_stats64  = rtw_net_get_stats64,
-	.ndo_do_ioctl = rtw_ioctl,
 };
 
 int rtw_init_netdev_name(struct net_device *pnetdev, const char *ifname)
@@ -1481,7 +1481,6 @@ static const struct net_device_ops rtw_netdev_vir_if_ops = {
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
 	.ndo_get_stats64 = rtw_net_get_stats64,
-	.ndo_do_ioctl = rtw_ioctl,
 	.ndo_select_queue	= rtw_select_queue,
 };
 
