@@ -93,22 +93,19 @@ static int rtw_net_set_mac_address(struct net_device *pnetdev, void *addr)
 	return ret;
 }
 
-static struct net_device_stats *rtw_net_get_stats(struct net_device *pnetdev)
+static void rtw_net_get_stats64(struct net_device *pnetdev, struct rtnl_link_stats64 *stats)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 	struct xmit_priv *pxmitpriv = &(padapter->xmitpriv);
 	struct recv_info *precvinfo = &(padapter->recvinfo);
 
-	padapter->stats.tx_packets = pxmitpriv->tx_pkts;/* pxmitpriv->tx_pkts++; */
-	padapter->stats.rx_packets = precvinfo->rx_pkts;/* precvinfo->rx_pkts++; */
-	padapter->stats.tx_dropped = pxmitpriv->tx_drop;
-	padapter->stats.rx_dropped = precvinfo->rx_drop;
-	padapter->stats.tx_bytes = pxmitpriv->tx_bytes;
-	padapter->stats.rx_bytes = precvinfo->rx_bytes;
-
-	return &padapter->stats;
+	stats->tx_packets = pxmitpriv->tx_pkts;
+	stats->rx_packets = precvinfo->rx_pkts;
+	stats->tx_dropped = pxmitpriv->tx_drop;
+	stats->rx_dropped = precvinfo->rx_drop;
+	stats->tx_bytes = pxmitpriv->tx_bytes;
+	stats->rx_bytes = precvinfo->rx_bytes;
 }
-
 
 
 /*
@@ -177,12 +174,13 @@ u16 rtw_os_recv_select_queue(u8 *msdu, enum rtw_rx_llc_hdl llc_hdl)
 	return rtw_1d_to_queue[priority];
 }
 
-static u8 is_rtw_ndev(struct net_device *ndev)
+static inline bool is_rtw_ndev(struct net_device *ndev)
 {
-	return ndev->netdev_ops
-		&& ndev->netdev_ops->ndo_do_ioctl
-		&& ndev->netdev_ops->ndo_do_ioctl == rtw_ioctl;
+	return ndev &&
+		   ndev->netdev_ops &&
+		   ndev->netdev_ops->ndo_get_stats64 == rtw_net_get_stats64;
 }
+
 
 
 #define _netdev_status_msg(_ndev, state, sts_str)		\
@@ -289,9 +287,7 @@ static const struct net_device_ops rtw_netdev_ops = {
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_select_queue	= rtw_select_queue,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
-	.ndo_get_stats = rtw_net_get_stats,
-	//.ndo_get_stats64  = rtw_get_stats64,  
-	.ndo_do_ioctl = rtw_ioctl,
+	.ndo_get_stats64  = rtw_net_get_stats64,
 };
 
 int rtw_init_netdev_name(struct net_device *pnetdev, const char *ifname)
@@ -339,9 +335,7 @@ struct net_device *rtw_init_netdev(_adapter *old_padapter)
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_TX
         pnetdev->features |= (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
         pnetdev->hw_features |= (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
-#endif
 #endif
 
 #ifdef CONFIG_RTW_NETIF_SG
@@ -356,9 +350,6 @@ struct net_device *rtw_init_netdev(_adapter *old_padapter)
 	/* pnetdev->tx_timeout = NULL; */
 	pnetdev->watchdog_timeo = HZ * 3; /* 3 second timeout */
 
-#ifdef CONFIG_WIRELESS_EXT
-	pnetdev->wireless_handlers = (struct iw_handler_def *)&rtw_handlers_def;
-#endif
 
 #ifdef WIRELESS_SPY
 	/* priv->wireless_data.spy_data = &priv->spy_data; */
@@ -1484,8 +1475,7 @@ static const struct net_device_ops rtw_netdev_vir_if_ops = {
 	.ndo_stop = netdev_close,
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
-	.ndo_get_stats = rtw_net_get_stats,
-	.ndo_do_ioctl = rtw_ioctl,
+	.ndo_get_stats64 = rtw_net_get_stats64,
 	.ndo_select_queue	= rtw_select_queue,
 };
 
