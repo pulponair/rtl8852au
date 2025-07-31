@@ -371,6 +371,14 @@ u16 hal_handle_rx_report_8852au(struct hal_info_t *hal, u8 *rp,
 		*mac_id = (u8)GET_RX_RP_PKT_MAC_ID(rp);
 		qsel_value = (u8)GET_RX_RP_PKT_QSEL(rp);
 		*txsts = (u8)GET_RX_RP_PKT_TX_STS(rp);
+
+		u32 raw_val = le32_to_cpu(*(u32 *)(rp));
+
+		RTW_INFO("WP RAW DWORD: 0x%08x → txsts(bits13-15) = %u\n",
+				 raw_val, (raw_val >> 13) & 0x7);
+		
+		print_hex_dump(KERN_INFO, "[WP-RP] ", DUMP_PREFIX_OFFSET, 16, 1, rp, 8, false);
+
 		/* wp_seq useless for usb case, then skip parsing*/
 		polluted = (u8)GET_RX_RP_PKT_POLLUTED(rp);
 

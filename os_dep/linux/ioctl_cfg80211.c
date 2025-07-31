@@ -12,6 +12,7 @@
  * more details.
  *
  *****************************************************************************/
+
 #define  _IOCTL_CFG80211_C_
 
 #include <drv_types.h>
@@ -2470,7 +2471,23 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 			sinfo->filled |= STATION_INFO_TX_RETRIES;
 			sinfo->tx_failed = psta->sta_stats.tx_fail_cnt_sum;
 			sinfo->tx_retries = psta->sta_stats.tx_retry_cnt_sum;
+
+
+			RTW_INFO("get_station(): tx_failed=%u, tx_retries=%u\n",
+				sinfo->tx_failed, sinfo->tx_retries);
+		
+			RTW_INFO("sta_stats dump: tx_pkts=%u, rx_pkts=%u, tx_bytes=%llu, rx_bytes=%llu\n",
+				psta->sta_stats.tx_pkts,
+				sta_rx_data_pkts(psta),
+				psta->sta_stats.tx_bytes,
+				psta->sta_stats.rx_bytes);
+		
+			RTW_INFO("sta_stats raw: tx_fail_cnt_sum=%u, tx_retry_cnt_sum=%u\n",
+				psta->sta_stats.tx_fail_cnt_sum,
+				psta->sta_stats.tx_retry_cnt_sum);			
 		}
+
+
 
 	}
 

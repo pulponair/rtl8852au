@@ -1505,6 +1505,16 @@ void phl_wp_report_record_sts_usb(struct phl_info_t *phl_info, u8 macid, u16 ac_
 	struct rtw_wp_rpt_stats *wp_rpt_stats= NULL;
 
 	phl_sta = rtw_phl_get_stainfo_by_macid(phl_info, macid);
+	
+	if (phl_sta && hal_sta) {
+		struct rtw_wp_rpt_stats *s = &hal_sta->trx_stat.wp_rpt_stats[ac_queue];
+	
+		RTW_INFO("WP-STATS: ok=%u retry=%u drop_life=%u drop_macid=%u\n",
+				 s->tx_ok_cnt, s->rty_fail_cnt,
+				 s->lifetime_drop_cnt, s->macid_drop_cnt);
+	}
+
+
 
 	if (phl_sta) {
 		hal_sta = phl_sta->hal_sta;
@@ -1553,12 +1563,20 @@ void _phl_rx_handle_wp_report_usb(struct phl_info_t *phl_info,
 
 	pkt = r->pkt_list[0].vir_addr;
 	pkt_len = r->pkt_list[0].length;
-
+	RTW_INFO("WP-RX: pkt_len = %u\n", pkt_len);
 	while (pkt_len > 0) {
 		rsize = rtw_hal_handle_wp_rpt_usb(phl_info->hal, pkt, pkt_len,
 						&macid, &ac_queue, &txsts);
-		if (0 == rsize)
+
+						RTW_INFO("[WP-DEBUG] pkt_len=%u rsize=%u macid=%u ac=%u txsts=%u\n",
+							pkt_len, rsize, macid, ac_queue, txsts);
+			   
+
+		if (0 == rsize) {
+			RTW_INFO("[WP-DEBUG] rsize == 0 → breaking loop\n");
 			break;
+		}
+			
 
 		phl_wp_report_record_sts_usb(phl_info, macid, ac_queue, txsts);
 		pkt += rsize;
@@ -1606,7 +1624,9 @@ static void phl_rx_process_usb(struct phl_info_t *phl_info,
 			break;
 		case RTW_RX_TYPE_TX_WP_RELEASE_HOST:
 			#ifdef CONFIG_PHL_USB_RELEASE_RPT_ENABLE
+			RTW_INFO(">>>>> HANDLER SHOULD RUN <<<<<\n");
 			_phl_rx_handle_wp_report_usb(phl_info, phl_rx);
+			RTW_INFO(">>>>> HANDLER CALLED <<<<<\n");
 			phl_recycle_rx_buf(phl_info, phl_rx);
 			phl_rx = NULL;
 			break;
