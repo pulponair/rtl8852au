@@ -93,22 +93,19 @@ static int rtw_net_set_mac_address(struct net_device *pnetdev, void *addr)
 	return ret;
 }
 
-static struct net_device_stats *rtw_net_get_stats(struct net_device *pnetdev)
+static void rtw_net_get_stats64(struct net_device *pnetdev, struct rtnl_link_stats64 *stats)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 	struct xmit_priv *pxmitpriv = &(padapter->xmitpriv);
 	struct recv_info *precvinfo = &(padapter->recvinfo);
 
-	padapter->stats.tx_packets = pxmitpriv->tx_pkts;/* pxmitpriv->tx_pkts++; */
-	padapter->stats.rx_packets = precvinfo->rx_pkts;/* precvinfo->rx_pkts++; */
-	padapter->stats.tx_dropped = pxmitpriv->tx_drop;
-	padapter->stats.rx_dropped = precvinfo->rx_drop;
-	padapter->stats.tx_bytes = pxmitpriv->tx_bytes;
-	padapter->stats.rx_bytes = precvinfo->rx_bytes;
-
-	return &padapter->stats;
+	stats->tx_packets = pxmitpriv->tx_pkts;
+	stats->rx_packets = precvinfo->rx_pkts;
+	stats->tx_dropped = pxmitpriv->tx_drop;
+	stats->rx_dropped = precvinfo->rx_drop;
+	stats->tx_bytes = pxmitpriv->tx_bytes;
+	stats->rx_bytes = precvinfo->rx_bytes;
 }
-
 
 
 /*
@@ -289,8 +286,7 @@ static const struct net_device_ops rtw_netdev_ops = {
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_select_queue	= rtw_select_queue,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
-	.ndo_get_stats = rtw_net_get_stats,
-	//.ndo_get_stats64  = rtw_get_stats64,  
+	.ndo_get_stats64  = rtw_net_get_stats64,
 	.ndo_do_ioctl = rtw_ioctl,
 };
 
@@ -1484,7 +1480,7 @@ static const struct net_device_ops rtw_netdev_vir_if_ops = {
 	.ndo_stop = netdev_close,
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
-	.ndo_get_stats = rtw_net_get_stats,
+	.ndo_get_stats64 = rtw_net_get_stats64,
 	.ndo_do_ioctl = rtw_ioctl,
 	.ndo_select_queue	= rtw_select_queue,
 };
