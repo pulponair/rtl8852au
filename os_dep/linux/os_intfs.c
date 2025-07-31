@@ -335,9 +335,7 @@ struct net_device *rtw_init_netdev(_adapter *old_padapter)
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_TX
         pnetdev->features |= (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
         pnetdev->hw_features |= (NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
-#endif
 #endif
 
 #ifdef CONFIG_RTW_NETIF_SG
@@ -352,9 +350,6 @@ struct net_device *rtw_init_netdev(_adapter *old_padapter)
 	/* pnetdev->tx_timeout = NULL; */
 	pnetdev->watchdog_timeo = HZ * 3; /* 3 second timeout */
 
-#ifdef CONFIG_WIRELESS_EXT
-	pnetdev->wireless_handlers = (struct iw_handler_def *)&rtw_handlers_def;
-#endif
 
 #ifdef WIRELESS_SPY
 	/* priv->wireless_data.spy_data = &priv->spy_data; */
