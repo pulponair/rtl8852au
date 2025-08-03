@@ -513,90 +513,6 @@ u8 rtw_get_tx_bw_mode(_adapter *adapter, struct sta_info *sta)
 	return bw;
 }
 
-static void rtw_get_adapter_tx_rate_bmp_by_bw(_adapter *adapter, u8 bw, u16 *r_bmp_cck_ofdm, u32 *r_bmp_ht, u64 *r_bmp_vht)
-{
-/* ToDo */
-#if 0
-	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
-	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
-	u8 fix_bw = 0xFF;
-	u16 bmp_cck_ofdm = 0;
-	u32 bmp_ht = 0;
-	u64 bmp_vht = 0;
-	int i;
-
-	if (adapter->fix_rate != NO_FIX_RATE && adapter->fix_bw != NO_FIX_BW)
-		fix_bw = adapter->fix_bw;
-
-	/* TODO: adapter->fix_rate */
-
-	for (i = 0; i < macid_ctl->num; i++) {
-		if (!rtw_macid_is_used(macid_ctl, i))
-			continue;
-		if (!rtw_macid_is_iface_specific(macid_ctl, i, adapter))
-			continue;
-
-		if (bw == CHANNEL_WIDTH_20) /* CCK, OFDM always 20MHz */
-			bmp_cck_ofdm |= macid_ctl->rate_bmp0[i] & 0x00000FFF;
-
-		/* bypass mismatch bandwidth for HT, VHT */
-		if ((fix_bw != 0xFF && fix_bw != bw) || (fix_bw == 0xFF && macid_ctl->bw[i] != bw))
-			continue;
-
-		if (macid_ctl->vht_en[i])
-			bmp_vht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-		else
-			bmp_ht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-	}
-
-	/* TODO: mlmeext->tx_rate*/
-
-	if (r_bmp_cck_ofdm)
-		*r_bmp_cck_ofdm = bmp_cck_ofdm;
-	if (r_bmp_ht)
-		*r_bmp_ht = bmp_ht;
-	if (r_bmp_vht)
-		*r_bmp_vht = bmp_vht;
-#endif
-}
-
-static void rtw_get_shared_macid_tx_rate_bmp_by_bw(struct dvobj_priv *dvobj, u8 bw, u16 *r_bmp_cck_ofdm, u32 *r_bmp_ht, u64 *r_bmp_vht)
-{
-/* ToDo */
-#if 0
-	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
-	u16 bmp_cck_ofdm = 0;
-	u32 bmp_ht = 0;
-	u64 bmp_vht = 0;
-	int i;
-
-	for (i = 0; i < macid_ctl->num; i++) {
-		if (!rtw_macid_is_used(macid_ctl, i))
-			continue;
-		if (!rtw_macid_is_iface_shared(macid_ctl, i))
-			continue;
-
-		if (bw == CHANNEL_WIDTH_20) /* CCK, OFDM always 20MHz */
-			bmp_cck_ofdm |= macid_ctl->rate_bmp0[i] & 0x00000FFF;
-
-		/* bypass mismatch bandwidth for HT, VHT */
-		if (macid_ctl->bw[i] != bw)
-			continue;
-
-		if (macid_ctl->vht_en[i])
-			bmp_vht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-		else
-			bmp_ht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-	}
-
-	if (r_bmp_cck_ofdm)
-		*r_bmp_cck_ofdm = bmp_cck_ofdm;
-	if (r_bmp_ht)
-		*r_bmp_ht = bmp_ht;
-	if (r_bmp_vht)
-		*r_bmp_vht = bmp_vht;
-#endif
-}
 
 void rtw_update_tx_rate_bmp(struct dvobj_priv *dvobj)
 {
@@ -5119,62 +5035,6 @@ static struct xmit_frame *get_one_xmitframe(struct xmit_priv *pxmitpriv, struct 
 	return pxmitframe;
 }
 
-static struct xmit_frame *rtw_get_xframe(struct xmit_priv *pxmitpriv, int *num_frame)
-{
-	_list *sta_plist, *sta_phead;
-	struct hw_xmit *phwxmit_i = pxmitpriv->hwxmits;
-	sint entry =  pxmitpriv->hwxmit_entry;
-
-	struct hw_xmit *phwxmit;
-	struct tx_servq *ptxservq = NULL;
-	_queue *pframe_queue = NULL;
-	struct xmit_frame *pxmitframe = NULL;
-	_adapter *padapter = pxmitpriv->adapter;
-	struct registry_priv	*pregpriv = &padapter->registrypriv;
-	int i, inx[4];
-
-	inx[0] = 0;
-	inx[1] = 1;
-	inx[2] = 2;
-	inx[3] = 3;
-
-	*num_frame = 0;
-
-	/*No amsdu when wifi_spec on*/
-	if (pregpriv->wifi_spec == 1) {
-		return NULL;
-	}
-
-	_rtw_spinlock_bh(&pxmitpriv->lock);
-
-	for (i = 0; i < entry; i++) {
-		phwxmit = phwxmit_i + inx[i];
-
-		sta_phead = get_list_head(phwxmit->sta_queue);
-		sta_plist = get_next(sta_phead);
-
-		while ((rtw_end_of_queue_search(sta_phead, sta_plist)) == _FALSE) {
-
-			ptxservq = LIST_CONTAINOR(sta_plist, struct tx_servq, tx_pending);
-			pframe_queue = &ptxservq->sta_pending;
-
-			if (ptxservq->qcnt) {
-				*num_frame = ptxservq->qcnt;
-				pxmitframe = get_one_xmitframe(pxmitpriv, phwxmit, ptxservq, pframe_queue);
-				goto exit;
-			}
-			sta_plist = get_next(sta_plist);
-		}
-	}
-
-exit:
-
-	_rtw_spinunlock_bh(&pxmitpriv->lock);
-
-	return pxmitframe;
-}
-
-
 struct xmit_frame *rtw_dequeue_xframe(struct xmit_priv *pxmitpriv, struct hw_xmit *phwxmit_i, sint entry)
 {
 	_list *sta_plist, *sta_phead;
@@ -6061,16 +5921,6 @@ s32 rtw_xmit(_adapter *padapter, struct sk_buff **ppkt, u16 os_qid)
 u32 test_seq;
 #endif
 
-static u8 *get_head_from_txreq(_adapter *padapter, struct xmit_frame *pxframe, u8 frag_idx)
-{
-	return 0;
-}
-
-static u8 *get_tail_from_txreq(_adapter *padapter, struct xmit_frame *pxframe, u8 frag_idx)
-{
-	return 0;
-}
-
 static void dump_pkt(u8 *start, u32 len)
 {
 	u32 idx = 0;
@@ -6127,57 +5977,6 @@ static u8 *get_txreq_buffer(_adapter *padapter, u8 **txreq, u8 **pkt_list, u8 **
 	}
 
 	return (u8 *)ptxreq_buf;
-}
-
-static void get_txreq_resources(_adapter *padapter, struct xmit_frame *pxframe,
-	u8 **txreq, u8 **pkt_list, u8 **head, u8 **tail)
-{
-	u32 offset_head = (sizeof(struct rtw_xmit_req) * RTW_MAX_FRAG_NUM);
-	u32 offset_tail = offset_head + (SZ_HEAD_BUF * RTW_MAX_FRAG_NUM);
-	u32 offset_list = offset_tail + (SZ_TAIL_BUF * RTW_MAX_FRAG_NUM);
-	u8 *pbuf = NULL;
-
-	PHLTX_ENTER;
-
-	//rtw_phl_tx todo: error handle, max tx req limit
-	padapter->tx_ring_idx++;
-	padapter->tx_ring_idx = (padapter->tx_ring_idx % MAX_TX_RING_NUM);
-
-	pbuf = padapter->tx_pool_ring[padapter->tx_ring_idx];
-	//memset(pbuf, 0, (SZ_TX_RING*RTW_MAX_FRAG_NUM));
-
-	if (txreq)
-		*txreq = pbuf;
-
-	if (head)
-		*head = pbuf + offset_head;
-
-	if (tail)
-		*tail = pbuf + offset_tail;
-
-	if (pkt_list)
-		*pkt_list = pbuf + offset_list;
-}
-
-static void dump_xmitframe_txreq(_adapter *padapter, struct xmit_frame *pxframe)
-{
-	struct rtw_xmit_req *txreq = pxframe->phl_txreq;
-	u32 idx, idx1 = 0;
-
-	PHLTX_ENTER;
-	printk("total txreq=%d \n", pxframe->txreq_cnt);
-
-	for (idx = 0; idx < pxframe->txreq_cnt; idx++) {
-		struct rtw_pkt_buf_list *pkt_list = (struct rtw_pkt_buf_list *)txreq->pkt_list;
-		printk("txreq[%d] with %d pkts =====\n", idx, txreq->pkt_cnt);
-		for (idx1 = 0; idx1 < txreq->pkt_cnt; idx1++) {
-			printk("pkt[%d] 0x%p len=%d\n", idx1, (void *)pkt_list->vir_addr, pkt_list->length);
-			dump_pkt(pkt_list->vir_addr, pkt_list->length);
-			pkt_list++;
-		}
-		txreq++;
-	}
-	printk("\n");
 }
 
 #ifdef CONFIG_PCI_HCI
@@ -6345,22 +6144,6 @@ static void fill_txreq_list_skb(_adapter *padapter,
 
 	if (req_sz != 0)
 		RTW_WARN("remain req_sz=%d should be zero\n", req_sz);
-}
-
-static s32 rtw_core_replace_skb(struct sk_buff **pskb, u32 need_head, u32 need_tail)
-{
-	struct sk_buff *newskb;
-	struct sk_buff *skb = *pskb;
-
-	newskb = rtw_skb_copy(skb);
-
-	if (newskb == NULL)
-		return FAIL;
-
-	rtw_skb_free(skb);
-	*pskb = newskb;
-
-	return SUCCESS;
 }
 
 #ifdef CONFIG_BR_EXT
@@ -6891,69 +6674,6 @@ static enum rtw_data_rate _rate_mrate2phl(enum MGN_RATE mrate)
 
 	if ((mrate != MGN_1M) && (phl == RTW_DATA_RATE_CCK1))
 		RTW_WARN("%s: Invalid rate 0x%x\n", __func__, mrate);
-
-	return phl;
-}
-
-/*
- * _rate_drv2phl() - convert data rate from drive to PHL(MAC)
- * @sta:	struct sta_info *
- * @rate:	date rate of driver
- *		0x0~0xB: CCK 1M ~ OFDM 54M
- *		>0xB: HT/VHT/HE use the same bits field to represent each
- *		      data rate, so these bits's real definition depended on
- *		      sta's wireless mode.
- *
- * Convert driver's data rate definition to PHL's definition.
- *
- * Return PHL's data rate definition "enum rtw_data_rate".
- */
-static enum rtw_data_rate _rate_drv2phl(struct sta_info *sta, u8 rate)
-{
-	enum rtw_data_rate phl = RTW_DATA_RATE_CCK1;
-	u8 ht_support = 0, vht_support = 0, he_support = 0;
-
-
-	if (rate < 12) {
-		/* B/G mode, CCK/OFDM rate */
-		return (enum rtw_data_rate)rate;
-	}
-
-#ifdef CONFIG_80211N_HT
-	if (sta->htpriv.ht_option == _TRUE)
-		ht_support = 1;
-#ifdef CONFIG_80211AC_VHT
-	if (sta->vhtpriv.vht_option == _TRUE)
-		vht_support = 1;
-#ifdef CONFIG_80211AX_HE
-	if (sta->hepriv.he_option == _TRUE)
-		he_support = 1;
-#endif /* CONFIG_80211AX_HE */
-#endif /* CONFIG_80211AC_VHT */
-#endif /* CONFIG_80211N_HT */
-
-	rate -= 12;
-	if (he_support) {
-		if (rate < 12)
-			phl = RTW_DATA_RATE_HE_NSS1_MCS0 + rate;
-		else if (rate < 24)
-			phl = RTW_DATA_RATE_HE_NSS2_MCS0 + (rate - 12);
-		else if (rate < 36)
-			phl = RTW_DATA_RATE_HE_NSS3_MCS0 + (rate - 24);
-		else
-			phl = RTW_DATA_RATE_HE_NSS4_MCS0 + (rate - 36);
-	} else if (vht_support) {
-		if (rate < 10)
-			phl = RTW_DATA_RATE_VHT_NSS1_MCS0 + rate;
-		else if (rate < 20)
-			phl = RTW_DATA_RATE_VHT_NSS2_MCS0 + (rate - 10);
-		else if (rate < 30)
-			phl = RTW_DATA_RATE_VHT_NSS3_MCS0 + (rate - 20);
-		else
-			phl = RTW_DATA_RATE_VHT_NSS4_MCS0 + (rate - 30);
-	} else if (ht_support) {
-		phl = RTW_DATA_RATE_MCS0 + rate;
-	}
 
 	return phl;
 }

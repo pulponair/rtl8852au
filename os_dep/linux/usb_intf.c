@@ -202,38 +202,6 @@ static u8 rtw_deinit_intf_priv(struct dvobj_priv *dvobj)
 	return rst;
 }
 
-static unsigned int rtw_endpoint_max_bpi(struct usb_device *dev,
-					 struct usb_host_endpoint *ep)
-{
-	u16 psize;
-	u16 mult = 1;
-	int max_size_1 = 0, max_size_2 = 0;
-
-	switch (dev->speed) {
-	case USB_SPEED_SUPER:
-	case USB_SPEED_SUPER_PLUS:
-		max_size_1 = le16_to_cpu(ep->ss_ep_comp.wBytesPerInterval);
-		max_size_2 = usb_endpoint_maxp(&ep->desc);
-
-		break;
-	case USB_SPEED_HIGH:
-		psize = usb_endpoint_maxp(&ep->desc);
-		mult = usb_endpoint_maxp_mult(&ep->desc);
-		max_size_1 = psize * mult;
-		max_size_2 = usb_endpoint_maxp(&ep->desc);
-		break;
-	case USB_SPEED_WIRELESS:
-		max_size_1 = max_size_2 = usb_endpoint_maxp(&ep->desc);
-		break;
-	default:
-		max_size_1 = max_size_2 = usb_endpoint_maxp(&ep->desc);
-		break;
-
-	}
-	RTW_INFO("USB EP MAX_PKT_SZ:%d-%d\n",max_size_1, max_size_2);
-	return max_size_1;
-}
-
 static struct dvobj_priv *usb_dvobj_init(struct usb_interface *usb_intf,
 					const struct usb_device_id *pdid)
 {

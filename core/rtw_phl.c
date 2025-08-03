@@ -867,22 +867,6 @@ void rtw_hw_cap_init(struct dvobj_priv *dvobj)
 
 
 /*
- * _ch_offset_drv2phl() - Convert driver channel offset to PHL type
- * @ch_offset:	channel offset, ref: HAL_PRIME_CHNL_OFFSET_*
- *
- * Return PHL channel offset type "enum chan_offset"
- */
-static enum chan_offset _ch_offset_drv2phl(u8 ch_offset)
-{
-	if (ch_offset == CHAN_OFFSET_UPPER)
-		return CHAN_OFFSET_UPPER;
-	if (ch_offset == CHAN_OFFSET_LOWER)
-		return CHAN_OFFSET_LOWER;
-
-	return CHAN_OFFSET_NO_EXT;
-}
-
-/*
  * rtw_hw_set_ch_bw() - Set channel, bandwidth and channel offset
  * @a:		pointer of struct _ADAPTER
  * @ch:		channel

@@ -3566,62 +3566,6 @@ unsigned int OnAtim(_adapter *padapter, union recv_frame *precv_frame)
 	return _SUCCESS;
 }
 
-static unsigned int on_action_spct_ch_switch(_adapter *padapter, struct sta_info *psta, u8 *ies, uint ies_len)
-{
-	unsigned int ret = _FAIL;
-	struct mlme_ext_priv *mlmeext = &padapter->mlmeextpriv;
-	struct mlme_ext_info	*pmlmeinfo = &(mlmeext->mlmext_info);
-
-	if (!(pmlmeinfo->state & WIFI_FW_ASSOC_SUCCESS)) {
-		ret = _SUCCESS;
-		goto exit;
-	}
-
-	if ((pmlmeinfo->state & 0x03) == WIFI_FW_STATION_STATE) {
-
-		int ch_switch_mode = -1, ch = -1, ch_switch_cnt = -1;
-		int ch_offset = -1;
-		u8 bwmode;
-		struct ieee80211_info_element *ie;
-
-		RTW_INFO(FUNC_NDEV_FMT" from "MAC_FMT"\n",
-			FUNC_NDEV_ARG(padapter->pnetdev), MAC_ARG(psta->phl_sta->mac_addr));
-
-		for_each_ie(ie, ies, ies_len) {
-			if (ie->id == WLAN_EID_CHANNEL_SWITCH) {
-				ch_switch_mode = ie->data[0];
-				ch = ie->data[1];
-				ch_switch_cnt = ie->data[2];
-				RTW_INFO("ch_switch_mode:%d, ch:%d, ch_switch_cnt:%d\n",
-					 ch_switch_mode, ch, ch_switch_cnt);
-			} else if (ie->id == WLAN_EID_SECONDARY_CHANNEL_OFFSET) {
-				ch_offset = secondary_ch_offset_to_hal_ch_offset(ie->data[0]);
-				RTW_INFO("ch_offset:%d\n", ch_offset);
-			}
-		}
-
-		if (ch == -1)
-			return _SUCCESS;
-
-		if (ch_offset == -1)
-			bwmode = mlmeext->chandef.bw;
-		else
-			bwmode = (ch_offset == CHAN_OFFSET_NO_EXT) ?
-				 CHANNEL_WIDTH_20 : CHANNEL_WIDTH_40;
-
-		ch_offset = (ch_offset == -1) ? mlmeext->chandef.offset : ch_offset;
-
-		/* todo:
-		 * 1. the decision of channel switching
-		 * 2. things after channel switching
-		 */
-
-		ret = rtw_set_chbw_cmd(padapter, ch, bwmode, ch_offset, 0);
-	}
-
-exit:
-	return ret;
-}
 
 unsigned int on_action_spct(_adapter *padapter, union recv_frame *precv_frame)
 {
@@ -9905,49 +9849,6 @@ void _linked_info_dump(_adapter *padapter)
 	if (padapter->bLinkInfoDump) {
 		rtw_hal_get_def_var(padapter, HW_DEF_RA_INFO_DUMP, RTW_DBGDUMP);
 		/*rtw_hal_set_phydm_var(padapter, HAL_PHYDM_RX_INFO_DUMP, RTW_DBGDUMP, _FALSE);*/
-	}
-}
-/********************************************************************
-
-When station does not receive any packet in MAX_CONTINUAL_NORXPACKET_COUNT*2 seconds,
-recipient station will teardown the block ack by issuing DELBA frame.
-
-*********************************************************************/
-static void rtw_delba_check(_adapter *padapter, struct sta_info *psta, u8 from_timer)
-{
-	int	i = 0;
-	int ret = _SUCCESS;
-	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
-	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
-
-	/*
-		IOT issue,occur Broadcom ap(Buffalo WZR-D1800H,Netgear R6300).
-		AP is originator.AP does not transmit unicast packets when STA response its BAR.
-		This case probably occur ap issue BAR after AP builds BA.
-
-		Follow 802.11 spec, STA shall maintain an inactivity timer for every negotiated Block Ack setup.
-		The inactivity timer is not reset when MPDUs corresponding to other TIDs are received.
-	*/
-	if (pmlmeinfo->assoc_AP_vendor == HT_IOT_PEER_BROADCOM) {
-		for (i = 0; i < TID_NUM ; i++) {
-			if ((psta->recvreorder_ctrl[i].enable) && 
-                        (sta_rx_data_qos_pkts(psta, i) == sta_last_rx_data_qos_pkts(psta, i)) ) {			
-					if (_TRUE == rtw_inc_and_chk_continual_no_rx_packet(psta, i)) {					
-						/* send a DELBA frame to the peer STA with the Reason Code field set to TIMEOUT */
-						if (!from_timer)
-							ret = issue_del_ba_ex(padapter, psta->phl_sta->mac_addr, i, 39, 0, 3, 1);
-						else
-							issue_del_ba(padapter,  psta->phl_sta->mac_addr, i, 39, 0);
-						psta->recvreorder_ctrl[i].enable = _FALSE;
-						if (ret != _FAIL)
-							psta->recvreorder_ctrl[i].ampdu_size = RX_AMPDU_SIZE_INVALID;
-						rtw_reset_continual_no_rx_packet(psta, i);
-					}				
-			} else {
-				/* The inactivity timer is reset when MPDUs to the TID is received. */
-				rtw_reset_continual_no_rx_packet(psta, i);
-			}
-		}
 	}
 }
 

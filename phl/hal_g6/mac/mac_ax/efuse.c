@@ -22,7 +22,6 @@ enum rtw_dv_sel dv_sel = DDV;
 
 static u32 efuse_map_init(struct mac_ax_adapter *adapter,
 			  enum efuse_map_sel map_sel);
-static u32 efuse_fwcmd_ck(struct mac_ax_adapter *adapter);
 static u32 efuse_proc_ck(struct mac_ax_adapter *adapter);
 static u32 cnv_efuse_state(struct mac_ax_adapter *adapter, u8 dest_state);
 static u32 switch_efuse_bank(struct mac_ax_adapter *adapter,

@@ -23,8 +23,6 @@ static u32 stop_macid_ctn(struct mac_ax_adapter *adapter,
 			  struct mac_role_tbl *role,
 			  struct mac_ax_sch_tx_en_cfg *bak);
 static u32 tx_idle_ck(struct mac_ax_adapter *adapter, u8 band);
-static u32 tx_idle_sel_ck(struct mac_ax_adapter *adapter, enum ptcl_tx_sel sel,
-			  u8 band);
 static u32 tx_idle_sel_ck_b(struct mac_ax_adapter *adapter,
 			    enum ptcl_tx_sel sel, u8 band);
 static u32 macid_idle_ck(struct mac_ax_adapter *adapter,

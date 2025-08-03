@@ -3530,24 +3530,6 @@ enum rtw_hal_status rtw_hal_mac_wow_wde_drop(struct hal_info_t *hal, u8 band)
 
 #endif /* CONFIG_WOWLAN */
 
-static enum rtw_hal_status
-hal_mac_read_efuse(struct mac_ax_adapter *mac, u32 addr, u32 size,
-						u8 *val, enum mac_ax_efuse_bank bank)
-{
-	if (mac->ops->read_efuse(mac, addr, size, val, bank) != MACSUCCESS)
-		return RTW_HAL_STATUS_FAILURE;
-	return RTW_HAL_STATUS_SUCCESS;
-}
-
-static enum rtw_hal_status
-hal_mac_write_efuse(struct mac_ax_adapter *mac, u32 addr, u8 val,
-						enum mac_ax_efuse_bank bank)
-{
-	if (mac->ops->write_efuse(mac, addr, val, bank) != MACSUCCESS)
-		return RTW_HAL_STATUS_FAILURE;
-	return RTW_HAL_STATUS_SUCCESS;
-}
-
 enum rtw_hal_status
 rtw_hal_mac_enable_cpu(struct hal_info_t *hal_info, u8 reason, u8 dlfw)
 {

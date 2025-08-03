@@ -325,18 +325,6 @@ void _set_bt_psd_report(struct btc_t *btc, u8 start_idx, u8 rpt_type)
 	buf[1] = rpt_type;
 	hal_btc_fw_set_bt(btc, SET_BT_PSD_REPORT, 2, buf);
 }
-
-static void _set_bt_info_report(struct btc_t *btc, u8 trigger)
-{
-	u8 buf = 0;
-
-	PHL_TRACE(COMP_PHL_BTC, _PHL_DEBUG_, "[BTC], %s(): query bt info\n",
-		  __func__);
-
-	buf = trigger;
-	hal_btc_fw_set_bt(btc, SET_BT_INFO_REPORT, 1, &buf);
-}
-
 static void _reset_btc_var(struct btc_t *btc, u8 type)
 {
 	struct rtw_hal_com_t *h = btc->hal;
