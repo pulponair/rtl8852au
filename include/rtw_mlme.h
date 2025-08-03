@@ -112,11 +112,7 @@ void rtw_wfd_st_switch(struct sta_info *sta, bool on);
 #define MLME_IS_ROCH(adapter) 0
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 #define MLME_IS_MGMT_TX(adapter) rtw_cfg80211_get_is_mgmt_tx(adapter)
-#else
-#define MLME_IS_MGMT_TX(adapter) 0
-#endif
 
 #define MLME_STATE_FMT "%s%s%s%s%s%s%s%s%s%s%s%s"
 #define MLME_STATE_ARG(adapter) \
@@ -278,7 +274,6 @@ struct wifi_display_info {
 };
 #endif /* CONFIG_WFD */
 
-#ifdef CONFIG_IOCTL_CFG80211
 struct cfg80211_roch_info {
 	u8						restore_channel;
 	struct ieee80211_channel	remain_on_ch_channel;
@@ -290,7 +285,6 @@ struct cfg80211_roch_info {
 	struct wireless_dev *ro_ch_wdev;
 	systime last_ro_ch_time; /* this will be updated at the beginning and end of ro_ch */
 };
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 #ifdef CONFIG_P2P_WOWLAN
 

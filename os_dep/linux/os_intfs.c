@@ -384,11 +384,9 @@ static int rtw_os_ndev_alloc(_adapter *adapter)
 	ndev->irq = dvobj_to_pci(adapter_to_dvobj(adapter))->irq;
 #endif
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (rtw_cfg80211_ndev_res_alloc(adapter) != _SUCCESS) {
 		rtw_warn_on(1);
 	} else
-#endif
 	ret = _SUCCESS;
 
 	if (ret != _SUCCESS && ndev)
@@ -399,9 +397,7 @@ exit:
 
 void rtw_os_ndev_free(_adapter *adapter)
 {
-#if defined(CONFIG_IOCTL_CFG80211)
 	rtw_cfg80211_ndev_res_free(adapter);
-#endif
 
 	/* free the old_pnetdev */
 	if (adapter->rereg_nd_name_priv.old_pnetdev) {
@@ -416,7 +412,6 @@ void rtw_os_ndev_free(_adapter *adapter)
 }
 
 /* For ethtool +++ */
-#ifdef CONFIG_IOCTL_CFG80211
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 8))
 static void rtw_ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 {
@@ -549,7 +544,6 @@ static const struct ethtool_ops rtw_ethtool_ops = {
 	.get_sset_count = rtw_ethtool_get_sset_count,
 };
 #endif // LINUX_VERSION_CODE >= 3.7.8
-#endif /* CONFIG_IOCTL_CFG80211 */
 /* For ethtool --- */
 
 static int rtw_os_ndev_register(_adapter *adapter, const char *name)
@@ -567,7 +561,6 @@ static int rtw_os_ndev_register(_adapter *adapter, const char *name)
 #endif
 #endif /* CONFIG_RTW_NAPI */
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (rtw_cfg80211_ndev_res_register(adapter) != _SUCCESS) {
 		rtw_warn_on(1);
 		ret = _FAIL;
@@ -575,7 +568,6 @@ static int rtw_os_ndev_register(_adapter *adapter, const char *name)
 	}
 
 	netdev_set_default_ethtool_ops(ndev, &rtw_ethtool_ops);
-#endif
 #if defined(CONFIG_PCI_HCI)
 	ndev->gro_flush_timeout = 100000;
 #endif
@@ -599,15 +591,11 @@ static int rtw_os_ndev_register(_adapter *adapter, const char *name)
 	else
 		RTW_INFO(FUNC_NDEV_FMT" if%d Failed!\n", FUNC_NDEV_ARG(ndev), (adapter->iface_id + 1));
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (ret != _SUCCESS) {
 		rtw_cfg80211_ndev_res_unregister(adapter);
 	}
-#endif
 
-#if defined(CONFIG_IOCTL_CFG80211)
 exit:
-#endif
 #ifdef CONFIG_RTW_NAPI
 	if (ret != _SUCCESS)
 		netif_napi_del(&adapter->napi);
@@ -627,9 +615,7 @@ void rtw_os_ndev_unregister(_adapter *adapter)
 
 	netdev = adapter->pnetdev;
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	rtw_cfg80211_ndev_res_unregister(adapter);
-#endif
 
 	if (netdev) {
 		struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
@@ -695,12 +681,10 @@ static int rtw_os_ndevs_alloc(struct dvobj_priv *dvobj)
 	int i, status = _SUCCESS;
 	_adapter *adapter;
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (rtw_cfg80211_dev_res_alloc(dvobj) != _SUCCESS) {
 		rtw_warn_on(1);
 		return _FAIL;
 	}
-#endif
 
 	for (i = 0; i < dvobj->iface_nums; i++) {
 
@@ -735,10 +719,8 @@ static int rtw_os_ndevs_alloc(struct dvobj_priv *dvobj)
 		}
 	}
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (status != _SUCCESS)
 		rtw_cfg80211_dev_res_free(dvobj);
-#endif
 
 	return status;
 }
@@ -764,9 +746,7 @@ static void rtw_os_ndevs_free(struct dvobj_priv *dvobj)
 		rtw_os_ndev_free(adapter);
 	}
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	rtw_cfg80211_dev_res_free(dvobj);
-#endif
 }
 
 #if 0 /*#ifdef CONFIG_CORE_CMD_THREAD*/
@@ -1035,9 +1015,7 @@ void devobj_deinit(struct dvobj_priv *pdvobj)
 		return;
 
 	/* TODO: use rtw_os_ndevs_deinit instead at the first stage of driver's dev deinit function */
-#if defined(CONFIG_IOCTL_CFG80211)
 	rtw_cfg80211_dev_res_free(pdvobj);
-#endif
 
 	_rtw_mutex_free(&pdvobj->hw_init_mutex);
 
@@ -1810,12 +1788,10 @@ static int rtw_os_ndevs_register(struct dvobj_priv *dvobj)
 	struct registry_priv *regsty = dvobj_to_regsty(dvobj);
 	_adapter *adapter;
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (rtw_cfg80211_dev_res_register(dvobj) != _SUCCESS) {
 		rtw_warn_on(1);
 		return _FAIL;
 	}
-#endif
 
 	for (i = 0; i < dvobj->iface_nums; i++) {
 
@@ -1859,10 +1835,8 @@ static int rtw_os_ndevs_register(struct dvobj_priv *dvobj)
 		}
 	}
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	if (status != _SUCCESS)
 		rtw_cfg80211_dev_res_unregister(dvobj);
-#endif
 	return status;
 }
 
@@ -1880,9 +1854,7 @@ void rtw_os_ndevs_unregister(struct dvobj_priv *dvobj)
 		rtw_os_ndev_unregister(adapter);
 	}
 
-#if defined(CONFIG_IOCTL_CFG80211)
 	rtw_cfg80211_dev_res_unregister(dvobj);
-#endif
 }
 
 /**
@@ -2335,11 +2307,9 @@ static int netdev_close(struct net_device *pnetdev)
 #endif /* CONFIG_P2P */
 
 	rtw_scan_abort(padapter, 0); /* stop scanning process before wifi is going to down */
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_wait_scan_req_empty(padapter, 200);
 	adapter_wdev_data(padapter)->bandroid_scan = _FALSE;
 	/* padapter->rtw_wdev->iftype = NL80211_IFTYPE_MONITOR; */ /* set this at the end */
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 #ifdef CONFIG_WAPI_SUPPORT
 	rtw_wapi_disable_tx(padapter);
@@ -2366,10 +2336,8 @@ void rtw_ndev_destructor(struct net_device *ndev)
 {
 	RTW_INFO(FUNC_NDEV_FMT"\n", FUNC_NDEV_ARG(ndev));
 
-#ifdef CONFIG_IOCTL_CFG80211
 	if (ndev->ieee80211_ptr)
 		rtw_mfree((u8 *)ndev->ieee80211_ptr, sizeof(struct wireless_dev));
-#endif
 	free_netdev(ndev);
 }
 

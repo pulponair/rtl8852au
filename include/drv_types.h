@@ -502,11 +502,9 @@ struct registry_priv {
 	u16 max_unassoc_sta_cnt;
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	u16 roch_min_home_dur; /* min duration for op channel */
 	u16 roch_max_away_dur; /* max acceptable away duration for remain on channel */
 	u16 roch_extend_dur; /* minimum duration to stay in roch when mgnt tx */
-#endif
 
 #if defined(ROKU_PRIVATE) && defined(CONFIG_P2P)
 	unsigned long go_hidden_ssid_mode;
@@ -1073,9 +1071,7 @@ struct dvobj_priv {
 	#ifdef PLATFORM_LINUX
 	_thread_hdl_ rtnl_lock_holder;
 
-	#if defined(CONFIG_IOCTL_CFG80211)
 	struct wiphy *wiphy;
-	#endif
 	#endif /* PLATFORM_LINUX */
 
 	#if 0 /*#ifdef CONFIG_CORE_DM_CHK_TIMER*/
@@ -1186,9 +1182,7 @@ struct dvobj_priv {
 #define dvobj_to_macidctl(dvobj) (&(dvobj->macid_ctl))
 #define dvobj_to_sec_camctl(dvobj) (&(dvobj->cam_ctl))
 #define dvobj_to_regsty(dvobj) (&(dvobj->padapters[IFACE_ID0]->registrypriv))
-#if defined(CONFIG_IOCTL_CFG80211)
 #define dvobj_to_wiphy(dvobj) ((dvobj)->wiphy)
-#endif
 #define dvobj_to_rfctl(dvobj) (&(dvobj->rf_ctl))
 #define rfctl_to_dvobj(rfctl) container_of((rfctl), struct dvobj_priv, rf_ctl)
 
@@ -1522,9 +1516,7 @@ struct _ADAPTER {
 	#endif
 
 	#ifdef PLATFORM_LINUX
-	#ifdef CONFIG_IOCTL_CFG80211
 	struct cfg80211_roch_info cfg80211_rochinfo;
-	#endif /* CONFIG_IOCTL_CFG80211 */
 
 	_nic_hdl pnetdev;
 	char old_ifname[IFNAMSIZ];
@@ -1542,11 +1534,9 @@ struct _ADAPTER {
 	struct proc_dir_entry *dir_dev;/* for proc directory */
 	struct proc_dir_entry *dir_odm;
 
-	#ifdef CONFIG_IOCTL_CFG80211
 	struct wireless_dev *rtw_wdev;
 	struct rtw_wdev_priv wdev_data;
 
-	#endif /* CONFIG_IOCTL_CFG80211 */
 
 	#endif /* PLATFORM_LINUX */
 

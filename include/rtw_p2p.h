@@ -56,9 +56,7 @@ void	p2p_ps_wk_hdl(_adapter *padapter, u8 p2p_ps_state);
 u8	p2p_ps_wk_cmd(_adapter *padapter, u8 p2p_ps_state, u8 enqueue);
 #endif /* CONFIG_P2P_PS */
 
-#ifdef CONFIG_IOCTL_CFG80211
 int rtw_p2p_check_frames(_adapter *padapter, const u8 *buf, u32 len, u8 tx);
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 void reset_global_wifidirect_info(_adapter *padapter);
 void init_wifidirect_info(_adapter *padapter, enum P2P_ROLE role);

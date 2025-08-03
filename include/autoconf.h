@@ -73,7 +73,6 @@
 #endif
 
 /* set CONFIG_IOCTL_CFG80211 from Makefile */
-#ifdef CONFIG_IOCTL_CFG80211
 	/*
 	 * Indecate new sta asoc through cfg80211_new_sta
 	 * If kernel version >= 3.2 or
@@ -84,7 +83,6 @@
 	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */	
 	/* #define CONFIG_DEBUG_CFG80211 */
 	#define CONFIG_SET_SCAN_DENY_TIMER
-#endif
 
 /*#define CONFIG_TX_AMSDU*/
 #ifdef CONFIG_TX_AMSDU

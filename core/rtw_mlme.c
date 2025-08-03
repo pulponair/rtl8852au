@@ -612,9 +612,7 @@ static void rtw_free_network(struct mlme_priv *pmlmepriv, struct	wlan_network *p
 static void rtw_free_network_nolock(_adapter *padapter, struct wlan_network *pnetwork)
 {
 	_rtw_free_network_nolock(&(padapter->mlmepriv), pnetwork);
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_unlink_bss(padapter, pnetwork);
-#endif /* CONFIG_IOCTL_CFG80211 */
 }
 
 
@@ -1917,9 +1915,7 @@ static u32 _rtw_wait_join_done(_adapter *adapter, u8 abort, u32 timeout_ms)
 
 	while (rtw_get_passing_time_ms(start) <= timeout_ms
 		&& (check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)
-			#ifdef CONFIG_IOCTL_CFG80211
 			|| rtw_cfg80211_is_connect_requested(adapter)
-			#endif
 			)
 	) {
 		if (RTW_CANNOT_RUN(adapter_to_dvobj(adapter)))
@@ -1931,9 +1927,7 @@ static u32 _rtw_wait_join_done(_adapter *adapter, u8 abort, u32 timeout_ms)
 
 	if (abort) {
 		if (check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)
-			#ifdef CONFIG_IOCTL_CFG80211
 			|| rtw_cfg80211_is_connect_requested(adapter)
-			#endif
 		) {
 			if (!RTW_CANNOT_RUN(adapter_to_dvobj(adapter)))
 				RTW_INFO(FUNC_ADPT_FMT" waiting for join_abort time out!\n", FUNC_ADPT_ARG(adapter));
@@ -2477,7 +2471,6 @@ void rtw_stassoc_event_callback(_adapter *adapter, u8 *pbuf)
 			if (!MLME_IS_MESH(adapter)) {
 				/* report to upper layer */
 				RTW_INFO("indicate_sta_assoc_event to upper layer - hostapd\n");
-				#ifdef CONFIG_IOCTL_CFG80211
 				_rtw_spinlock_bh(&psta->lock);
 				if (psta->passoc_req && psta->assoc_req_len > 0) {
 					passoc_req = rtw_zmalloc(psta->assoc_req_len);
@@ -2492,9 +2485,6 @@ void rtw_stassoc_event_callback(_adapter *adapter, u8 *pbuf)
 					rtw_cfg80211_indicate_sta_assoc(adapter, passoc_req, assoc_req_len);
 					rtw_mfree(passoc_req, assoc_req_len);
 				}
-				#else /* !CONFIG_IOCTL_CFG80211	 */
-				rtw_indicate_sta_assoc_event(adapter, psta);
-				#endif /* !CONFIG_IOCTL_CFG80211 */
 			}
 #endif /* !CONFIG_AUTO_AP_MODE */
 
@@ -2814,10 +2804,8 @@ void rtw_join_timeout_handler(void *ctx)
 		rtw_indicate_disconnect(adapter, pmlmepriv->join_status, _FALSE);
 		free_scanqueue(pmlmepriv);/* ??? */
 
-#ifdef CONFIG_IOCTL_CFG80211
 		/* indicate disconnect for the case that join_timeout and check_fwstate != FW_LINKED */
 		rtw_cfg80211_indicate_disconnect(adapter, pmlmepriv->join_status, _FALSE);
-#endif /* CONFIG_IOCTL_CFG80211 */
 	}
 
 	pmlmepriv->join_status = 0; /* reset */
@@ -5365,9 +5353,7 @@ static enum phl_mdl_ret_code _connect_abort(void* dispr, void *priv)
 		_rtw_spinlock_bh(&a->mlmepriv.lock);
 		a->mlmepriv.join_status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 		rtw_indicate_disconnect(a, a->mlmepriv.join_status, _FALSE);
-#ifdef CONFIG_IOCTL_CFG80211
 		rtw_cfg80211_indicate_disconnect(a, a->mlmepriv.join_status, _FALSE);
-#endif /* CONFIG_IOCTL_CFG80211 */
 		a->mlmepriv.join_status = 0;
 		_rtw_spinunlock_bh(&a->mlmepriv.lock);
 	}

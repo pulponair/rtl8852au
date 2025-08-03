@@ -2465,9 +2465,7 @@ void update_wireless_mode(_adapter *padapter)
 	if ((pmlmeext->cur_wireless_mode & WLAN_MD_11B)
 		#ifdef CONFIG_P2P
 		&& (rtw_p2p_chk_role(pwdinfo, P2P_ROLE_DISABLE)
-			#ifdef CONFIG_IOCTL_CFG80211
 			|| !rtw_cfg80211_iface_has_p2p_group_cap(padapter)
-			#endif
 			)
 		#endif
 	)

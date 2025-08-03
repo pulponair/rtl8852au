@@ -521,12 +521,10 @@ struct sta_info {
 	BOOLEAN alive;
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	u8 *pauth_frame;
 	u32 auth_len;
 	u8 *passoc_req;
 	u32 assoc_req_len;
-#endif
 
 	u8		IOTPeer;			/* Enum value.	HT_IOT_PEER_E */
 #ifdef CONFIG_LPS_PG

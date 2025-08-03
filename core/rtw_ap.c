@@ -1894,7 +1894,6 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			psecuritypriv->wpa2_pairwise_cipher = pairwise_cipher;
 			psecuritypriv->akmp = akm;
 
-#ifdef CONFIG_IOCTL_CFG80211
 			/**
 			 * Kernel < v5.x, the auth_type set as
 			 * NL80211_AUTHTYPE_AUTOMATIC in
@@ -1907,7 +1906,6 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 				psecuritypriv->auth_type = MLME_AUTHTYPE_SAE;
 				psecuritypriv->auth_alg = WLAN_AUTH_SAE;
 			}
-#endif /* CONFIG_IOCTL_CFG80211 */
 #if 0
 			switch (group_cipher) {
 			case WPA_CIPHER_NONE:
@@ -3776,7 +3774,6 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 	_rtw_spinlock_bh(&psta->lock);
 	psta->state &= ~(WIFI_ASOC_STATE | WIFI_UNDER_KEY_HANDSHAKE);
 
-#ifdef CONFIG_IOCTL_CFG80211
 	if ((psta->auth_len != 0) && (psta->pauth_frame != NULL)) {
 		rtw_mfree(psta->pauth_frame, psta->auth_len);
 		psta->pauth_frame = NULL;
@@ -3788,7 +3785,6 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 		psta->passoc_req = NULL;
 		psta->assoc_req_len = 0;
 	}
-#endif /* CONFIG_IOCTL_CFG80211 */
 	_rtw_spinunlock_bh(&psta->lock);
 
 	if (!MLME_IS_MESH(padapter)) {
@@ -3796,15 +3792,11 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 		rtw_wds_path_flush_by_nexthop(psta);
 		#endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 		#ifdef COMPAT_KERNEL_RELEASE
 		rtw_cfg80211_indicate_sta_disassoc(padapter, psta->phl_sta->mac_addr, reason);
 		#else
 		rtw_cfg80211_indicate_sta_disassoc(padapter, psta->phl_sta->mac_addr, reason);
 		#endif
-#else
-		rtw_indicate_sta_disassoc_event(padapter, psta);
-#endif
 	}
 
 	beacon_updated = bss_cap_update_on_sta_leave(padapter, psta);
@@ -5043,7 +5035,6 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 	}
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	if (MLME_IS_AP(adapter) &&
 		(sec->auth_type == MLME_AUTHTYPE_SAE) &&
 		(CHECK_BIT(WLAN_AKM_TYPE_SAE, sta->akm_suite_type)) &&
@@ -5057,7 +5048,6 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 			RTW_INFO("SAE: PMKSA cache entry found\n");
 		}
 	}
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 	if (!MLME_IS_AP(adapter))
 		goto exit;

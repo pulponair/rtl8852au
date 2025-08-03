@@ -15,7 +15,6 @@
 
 #include <drv_types.h>
 
-#ifdef CONFIG_IOCTL_CFG80211
 void rtw_regd_apply_flags(struct wiphy *wiphy)
 {
 	struct dvobj_priv *dvobj = wiphy_to_dvobj(wiphy);
@@ -125,4 +124,3 @@ int rtw_regd_init(struct wiphy *wiphy)
 
 	return 0;
 }
-#endif /* CONFIG_IOCTL_CFG80211 */

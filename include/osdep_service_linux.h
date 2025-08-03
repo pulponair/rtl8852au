@@ -71,10 +71,8 @@
 #include <linux/ieee80211.h>
 
 
-#ifdef CONFIG_IOCTL_CFG80211
 /*	#include <linux/ieee80211.h> */
 #include <net/cfg80211.h>
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

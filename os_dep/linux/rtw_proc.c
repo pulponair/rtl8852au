@@ -3914,7 +3914,6 @@ exit:
 	return count;
 }
 
-#ifdef CONFIG_IOCTL_CFG80211
 static u8 assoc_req_mac_addr[6];
 int proc_get_sta_assoc_req_frame_body(struct seq_file *m, void *v)
 {
@@ -3987,7 +3986,6 @@ ssize_t proc_set_sta_assoc_req_frame_body(struct file *file, const char __user *
 
 	return count;
 }
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 static int proc_get_ch_util_threshold(struct seq_file *m, void *v)
 {
@@ -5054,9 +5052,7 @@ const struct rtw_proc_hdl adapter_proc_hdls[] = {
 #ifdef CONFIG_RTW_MULTI_AP
 	RTW_PROC_HDL_SSEQ("multi_ap_opmode", proc_get_multi_ap_opmode, proc_set_multi_ap_opmode),
 	RTW_PROC_HDL_SSEQ("unassoc_sta", proc_get_unassoc_sta, proc_set_unassoc_sta),
-#ifdef CONFIG_IOCTL_CFG80211
 	RTW_PROC_HDL_SSEQ("sta_assoc_req_frame_body", proc_get_sta_assoc_req_frame_body, proc_set_sta_assoc_req_frame_body),
-#endif
 	RTW_PROC_HDL_SSEQ("ch_util_threshold", proc_get_ch_util_threshold, proc_set_ch_util_threshold),
 	RTW_PROC_HDL_SSEQ("ch_utilization", proc_get_ch_utilization, NULL),
 #endif

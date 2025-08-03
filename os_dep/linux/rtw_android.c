@@ -429,9 +429,7 @@ static int rtw_android_set_block_scan(struct net_device *net, char *command, int
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(net);
 	char *block_value = command + strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_BLOCK_SCAN]) + 1;
 
-#ifdef CONFIG_IOCTL_CFG80211
 	adapter_wdev_data(adapter)->block_scan = (*block_value == '0') ? _FALSE : _TRUE;
-#endif
 
 	return 0;
 }
@@ -441,9 +439,7 @@ static int rtw_android_set_block(struct net_device *net, char *command, int tota
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(net);
 	char *block_value = command + strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_BLOCK]) + 1;
 
-#ifdef CONFIG_IOCTL_CFG80211
 	adapter_wdev_data(adapter)->block = (*block_value == '0') ? _FALSE : _TRUE;
-#endif
 
 	return 0;
 }
@@ -720,9 +716,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	case ANDROID_WIFI_CMD_SCAN_ACTIVE:
 		/* rtw_set_scan_mode((_adapter *)rtw_netdev_priv(net), SCAN_ACTIVE); */
 #ifdef CONFIG_PLATFORM_MSTAR
-#ifdef CONFIG_IOCTL_CFG80211
 		adapter_wdev_data((_adapter *)rtw_netdev_priv(net))->bandroid_scan = _TRUE;
-#endif /* CONFIG_IOCTL_CFG80211 */
 #endif /* CONFIG_PLATFORM_MSTAR */
 		break;
 	case ANDROID_WIFI_CMD_SCAN_PASSIVE:
@@ -830,7 +824,6 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		/* bytes_written = wl_cfg80211_set_p2p_ps(net, command + skip, priv_cmd.total_len - skip); */
 		break;
 
-#ifdef CONFIG_IOCTL_CFG80211
 	case ANDROID_WIFI_CMD_SET_AP_WPS_P2P_IE: {
 		int skip = strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_SET_AP_WPS_P2P_IE]) + 3;
 		bytes_written = rtw_cfg80211_set_mgnt_wpsp2pie(net, command + skip, priv_cmd.total_len - skip, *(command + skip - 2) - '0');
@@ -838,7 +831,6 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		adapter_to_dvobj(padapter)->wpas_type = RTW_WPAS_ANDROID;
 		break;
 	}
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 #ifdef CONFIG_WFD
 

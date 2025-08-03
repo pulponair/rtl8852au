@@ -58,9 +58,6 @@
 
 	#include <linux/version.h>
 	
-	#ifndef CONFIG_IOCTL_CFG80211
-	#define CONFIG_IOCTL_CFG80211
-	#endif
 	
 	#ifndef RTW_USE_CFG80211_STA_EVENT
 	#define RTW_USE_CFG80211_STA_EVENT
@@ -613,9 +610,7 @@ power down etc.) in last time, we can unmark this flag to avoid some unpredictab
 
 	#define CONFIG_CMD_SCAN
 	#ifdef CONFIG_CMD_SCAN
-		#ifdef CONFIG_IOCTL_CFG80211
 		#define CONFIG_PHL_CMD_SCAN_BKOP_TIME
-		#endif
 		/* Scan hidden AP in passive channel */
 		#define RTW_WKARD_CMD_SCAN_EXTEND_ACTIVE_SCAN
 		#define RTW_EXTEND_ACTIVE_SCAN_PERIOD	30	/* unit: ms */

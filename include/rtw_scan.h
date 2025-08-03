@@ -275,11 +275,9 @@ u8 sitesurvey_cmd_hdl(_adapter *padapter, u8 *pbuf);
 void rtw_survey_cmd_callback(_adapter  *padapter, struct cmd_obj *pcmd);
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 u8 rtw_phl_remain_on_ch_cmd(_adapter *padapter, u64 cookie, struct wireless_dev *wdev,
 	struct ieee80211_channel *ch, u8 ch_type, unsigned int duration,
 	struct back_op_param *bkop_parm, u8 is_p2p);
-#endif
 
 #ifdef CONFIG_STA_CMD_DISPR
 u8 scan_issu_null_data_cb(void *priv, u8 ridx, bool ps);

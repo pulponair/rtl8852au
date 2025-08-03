@@ -48,10 +48,8 @@ u8 rtw_mi_stayin_union_ch_chk(_adapter *adapter)
 		RTW_ERR("%s Not stay in union channel\n", __func__);
 		if (GET_PHL_COM(adapter_to_dvobj(adapter))->bScanInProcess == _TRUE)
 			RTW_ERR("ScanInProcess\n");
-		#ifdef CONFIG_IOCTL_CFG80211
 		if (rtw_cfg80211_get_is_roch(adapter))
 			RTW_ERR("Doing remain on channel\n");
-		#endif
 		RTW_ERR("union ch, bw, offset: %u,%u,%u\n", u_ch, u_bw, u_offset);
 		RTW_ERR("oper ch, bw, offset: %u,%u,%u\n", o_ch, o_bw, o_offset);
 		RTW_ERR("=========================\n");
@@ -233,14 +231,12 @@ void rtw_mi_status_by_ifbmp(struct dvobj_priv *dvobj, u8 ifbmp, struct mi_state 
 				MSTATE_SCAN_ENTER_NUM(mstate)++;
 		}
 
-#ifdef CONFIG_IOCTL_CFG80211
 		if (rtw_cfg80211_get_is_mgmt_tx(iface))
 			MSTATE_MGMT_TX_NUM(mstate)++;
 		#ifdef CONFIG_P2P
 		if (rtw_cfg80211_get_is_roch(iface) == _TRUE)
 			MSTATE_ROCH_NUM(mstate)++;
 		#endif
-#endif /* CONFIG_IOCTL_CFG80211 */
 #ifdef CONFIG_P2P
 		if (MLME_IS_PD(iface))
 			MSTATE_P2P_DV_NUM(mstate)++;
@@ -285,12 +281,10 @@ inline void rtw_mi_status_merge(struct mi_state *d, struct mi_state *a)
 	d->scan_num += a->scan_num;
 	d->scan_enter_num += a->scan_enter_num;
 	d->uwps_num += a->uwps_num;
-#ifdef CONFIG_IOCTL_CFG80211
 	#ifdef CONFIG_P2P
 	d->roch_num += a->roch_num;
 	#endif
 	d->mgmt_tx_num += a->mgmt_tx_num;
-#endif
 }
 
 void dump_mi_status(void *sel, struct dvobj_priv *dvobj)
@@ -320,12 +314,10 @@ void dump_mi_status(void *sel, struct dvobj_priv *dvobj)
 #endif
 	RTW_PRINT_SEL(sel, "scan_num:%d\n", DEV_SCAN_NUM(dvobj));
 	RTW_PRINT_SEL(sel, "under_wps_num:%d\n", DEV_WPS_NUM(dvobj));
-#if defined(CONFIG_IOCTL_CFG80211)
 	#if defined(CONFIG_P2P)
 	RTW_PRINT_SEL(sel, "roch_num:%d\n", DEV_ROCH_NUM(dvobj));
 	#endif
 	RTW_PRINT_SEL(sel, "mgmt_tx_num:%d\n", DEV_MGMT_TX_NUM(dvobj));
-#endif
 	RTW_PRINT_SEL(sel, "union_ch:%d\n", DEV_U_CH(dvobj));
 	RTW_PRINT_SEL(sel, "union_bw:%d\n", DEV_U_BW(dvobj));
 	RTW_PRINT_SEL(sel, "union_offset:%d\n", DEV_U_OFFSET(dvobj));

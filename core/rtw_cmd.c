@@ -3283,7 +3283,6 @@ static void reset_securitypriv_hdl(_adapter *padapter)
 	rtw_reset_securitypriv(padapter);
 }
 
-#ifdef CONFIG_IOCTL_CFG80211
 #if 0 /*!CONFIG_PHL_ARCH*/
 static u8 _p2p_roch_cmd(_adapter *adapter
 	, u64 cookie, struct wireless_dev *wdev
@@ -3439,7 +3438,6 @@ inline u8 rtw_mgnt_tx_cmd(_adapter *adapter, u8 tx_ch, u8 no_cck, const u8 *buf,
 exit:
 	return res;
 }
-#endif
 
 #ifdef CONFIG_POWER_SAVING
 u8 rtw_ps_cmd(_adapter *padapter)
@@ -6291,11 +6289,9 @@ u8 rtw_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
 		break;
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	case MGNT_TX_WK_CID:
 		ret = rtw_mgnt_tx_handler(padapter, pdrvextra_cmd->pbuf);
 		break;
-#endif /* CONFIG_IOCTL_CFG80211 */
 #if defined(CONFIG_RTW_MESH) && defined(RTW_PER_CMD_SUPPORT_FW)
 	case REQ_PER_CMD_WK_CID:
 		ret = rtw_req_per_cmd_hdl(padapter);
