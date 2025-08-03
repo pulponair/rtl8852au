@@ -5019,21 +5019,6 @@ static struct xmit_frame *dequeue_one_xmitframe(struct xmit_priv *pxmitpriv, str
 	return pxmitframe;
 }
 
-static struct xmit_frame *get_one_xmitframe(struct xmit_priv *pxmitpriv, struct hw_xmit *phwxmit, struct tx_servq *ptxservq, _queue *pframe_queue)
-{
-	_list	*xmitframe_plist, *xmitframe_phead;
-	struct	xmit_frame	*pxmitframe = NULL;
-
-	xmitframe_phead = get_list_head(pframe_queue);
-	xmitframe_plist = get_next(xmitframe_phead);
-
-	while ((rtw_end_of_queue_search(xmitframe_phead, xmitframe_plist)) == _FALSE) {
-		pxmitframe = LIST_CONTAINOR(xmitframe_plist, struct xmit_frame, list);
-		break;
-	}
-
-	return pxmitframe;
-}
 
 struct xmit_frame *rtw_dequeue_xframe(struct xmit_priv *pxmitpriv, struct hw_xmit *phwxmit_i, sint entry)
 {
@@ -5631,41 +5616,6 @@ fail:
 }
 #endif
 
-/*
- *
- * Return _TRUE when frame has been put to queue, otherwise return _FALSE.
- */
-static u8 xmit_enqueue(_adapter *a, struct xmit_frame *frame)
-{
-	struct sta_info *sta = NULL;
-	struct pkt_attrib *attrib = NULL;
-	_list *head;
-	u8 ret = _TRUE;
-
-
-	attrib = &frame->attrib;
-	sta = attrib->psta;
-	if (!sta)
-		return _FALSE;
-
-	_rtw_spinlock_bh(&sta->tx_queue.lock);
-
-	head = get_list_head(&sta->tx_queue);
-
-	if ((rtw_is_list_empty(head) == _TRUE) && (!sta->tx_q_enable)) {
-		ret = _FALSE;
-		goto exit;
-	}
-
-	rtw_list_insert_tail(&frame->list, head);
-	RTW_INFO(FUNC_ADPT_FMT ": en-queue tx pkt for macid=%d\n",
-		 FUNC_ADPT_ARG(a), sta->phl_sta->macid);
-
-exit:
-	_rtw_spinunlock_bh(&sta->tx_queue.lock);
-
-	return ret;
-}
 
 static void xmit_dequeue(struct sta_info *sta)
 {
@@ -5920,17 +5870,6 @@ s32 rtw_xmit(_adapter *padapter, struct sk_buff **ppkt, u16 os_qid)
 #ifdef RTW_PHL_TEST_FPGA
 u32 test_seq;
 #endif
-
-static void dump_pkt(u8 *start, u32 len)
-{
-	u32 idx = 0;
-	for (idx = 0; idx < len; idx++) {
-		printk("%02x ", start[idx]);
-		if ((idx % 20) == 19)
-			printk("\n");
-	}
-	printk("\n");
-}
 
 /* TXREQ_QMGT */
 static u8 *get_txreq_buffer(_adapter *padapter, u8 **txreq, u8 **pkt_list, u8 **head, u8 **tail)

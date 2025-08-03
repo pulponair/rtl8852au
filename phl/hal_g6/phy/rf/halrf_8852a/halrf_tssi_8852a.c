@@ -3221,20 +3221,6 @@ static void _halrf_tssi_set_txagc_offset_mv_avg_8852ab(struct rf_info *rf,
 	halrf_wreg_fw(rf, txagc_offset_mv_avg_rpt_sel[path], 0x000f0000, 0x0);
 }
 
-static void _halrf_tssi_run_tssi_slope_8852ab(struct rf_info *rf,
-					enum phl_phy_idx phy, enum rf_path path)
-{
-	RF_DBG(rf, DBG_RF_TX_PWR_TRACK, "======>%s   path=%d\n", __func__, path);
-
-	if (path == RF_PATH_A) {
-		halrf_wreg_fw(rf, 0x5820, 0x80000000, 0x0);
-		halrf_wreg_fw(rf, 0x5820, 0x80000000, 0x1);
-	} else {
-		halrf_wreg_fw(rf, 0x7820, 0x80000000, 0x0);
-		halrf_wreg_fw(rf, 0x7820, 0x80000000, 0x1);
-	}
-}
-
 static void _halrf_tssi_tssi_pak_8852ab(struct rf_info *rf,
 					enum phl_phy_idx phy, enum rf_path path)
 {		

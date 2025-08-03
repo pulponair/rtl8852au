@@ -353,24 +353,6 @@ exit:
 	return;
 }
 
-static sint	_rtw_enqueue_network(_queue *queue, struct wlan_network *pnetwork)
-{
-
-	if (pnetwork == NULL)
-		goto exit;
-
-	_rtw_spinlock_bh(&queue->lock);
-
-	rtw_list_insert_tail(&pnetwork->list, &queue->queue);
-
-	_rtw_spinunlock_bh(&queue->lock);
-
-exit:
-
-
-	return _SUCCESS;
-}
-
 /*
 struct	wlan_network *_rtw_dequeue_network(_queue *queue)
 {

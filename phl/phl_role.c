@@ -198,15 +198,6 @@ phl_get_wrole_by_ridx(struct phl_info_t *phl_info, u8 rold_idx)
 	return NULL;
 }
 
-static void
-_phl_role_notify_buf_done(void* priv, struct phl_msg* msg)
-{
-	struct phl_info_t *phl_info = (struct phl_info_t *)priv;
-
-	if(msg->inbuf && msg->inlen){
-		_os_mem_free(phl_to_drvpriv(phl_info), msg->inbuf, msg->inlen);
-	}
-}
 
 #ifdef CONFIG_CMD_DISP
 static void

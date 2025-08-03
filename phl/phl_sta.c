@@ -196,13 +196,6 @@ exit:
 	return phl_status;
 }
 
-static u16 _phl_get_macid(struct phl_info_t *phl_info,
-		struct rtw_phl_stainfo_t *phl_sta)
-{
-	/* TODO: macid management */
-	return phl_sta->macid;
-}
-
 /**
  * This function export to core layer use
  * to get phl role bmc macid
@@ -272,69 +265,6 @@ rtw_phl_macid_is_used(void *phl, u16 macid)
 
 
 	return _phl_macid_is_used(macid_ctl->used_map, macid);
-}
-
-/**
- * This function is used to
- * check macid shared by all wifi role
- * @phl: see phl_info_t
- * @macid: macid
- */
-
-static u8
-rtw_phl_macid_is_wrole_shared(void *phl, u16 macid)
-{
-	struct phl_info_t *phl_info = (struct phl_info_t *)phl;
-	struct macid_ctl_t *macid_ctl = phl_to_mac_ctrl(phl_info);
-	int i = 0;
-	u8 iface_bmp = 0;
-
-	if (macid >= macid_ctl->max_num) {
-		PHL_ERR("%s macid(%d) is invalid\n", __func__, macid);
-		return false;
-	}
-
-	for (i = 0; i < MAX_WIFI_ROLE_NUMBER; i++) {
-		if (_phl_macid_is_used(&macid_ctl->wifi_role_usedmap[i][0], macid)) {
-			if (iface_bmp)
-				return true;
-			iface_bmp |= BIT(i);
-		}
-	}
-	return false;
-}
-
-/**
- * This function is used to
- * check macid not shared by all wifi role
- * and belong to wifi role
- * @phl: see phl_info_t
- * @macid: macid
- * @wrole: check id belong to this wifi role
- */
-static u8
-rtw_phl_macid_is_wrole_specific(void *phl,
-					u16 macid, struct rtw_wifi_role_t *wrole)
-{
-	struct phl_info_t *phl_info = (struct phl_info_t *)phl;
-	struct macid_ctl_t *macid_ctl = phl_to_mac_ctrl(phl_info);
-	int i = 0;
-	u8 iface_bmp = 0;
-
-	if (macid >= macid_ctl->max_num) {
-		PHL_ERR("%s macid(%d) invalid\n", __func__, macid);
-		return false;
-	}
-
-	for (i = 0; i < MAX_WIFI_ROLE_NUMBER; i++) {
-		if (_phl_macid_is_used(&macid_ctl->wifi_role_usedmap[i][0], macid)) {
-			if (iface_bmp || i != wrole->id)
-				return false;
-			iface_bmp |= BIT(i);
-		}
-	}
-
-	return iface_bmp ? true : false;
 }
 
 

@@ -2916,35 +2916,6 @@ void rtw_iface_dynamic_chk_wk_hdl(_adapter *padapter)
 
 }
 
-static void rtw_dynamic_chk_wk_hdl(_adapter *padapter)
-{
-	rtw_mi_dynamic_chk_wk_hdl(padapter);
-
-#ifdef DBG_CONFIG_ERROR_DETECT
-	rtw_hal_sreset_xmit_status_check(padapter);
-	rtw_hal_sreset_linked_status_check(padapter);
-#endif
-
-	/* if(check_fwstate(pmlmepriv, WIFI_UNDER_LINKING|WIFI_UNDER_SURVEY)==_FALSE) */
-	{
-#ifdef DBG_RX_COUNTER_DUMP
-		rtw_dump_rx_counters(padapter);
-#endif
-	}
-
-#ifdef CONFIG_RTW_MULTI_AP
-	rtw_ch_util_rpt(padapter);
-#endif
-
-#ifdef CONFIG_DFS_MASTER
-	rtw_chset_chk_non_ocp_finish(adapter_to_rfctl(padapter));
-#endif
-
-#ifdef CONFIG_IPS_CHECK_IN_WD
-	/* always call rtw_ps_processor() at last one. */
-	rtw_ps_processor(padapter);
-#endif
-}
 
 void rtw_dynamic_chk_wk_sw_hdl(_adapter *padapter)
 {
@@ -6450,18 +6421,6 @@ void rtw_setstaKey_cmdrsp_callback(_adapter *padapter ,  struct cmd_obj *pcmd)
 exit:
 
 	rtw_free_cmd_obj(pcmd);
-
-
-}
-
-static void rtw_getrttbl_cmd_cmdrsp_callback(_adapter *padapter,  struct cmd_obj *pcmd)
-{
-
-	rtw_free_cmd_obj(pcmd);
-#ifdef CONFIG_MP_INCLUDED
-	if (padapter->registrypriv.mp_mode == 1)
-		padapter->mppriv.workparam.bcompleted = _TRUE;
-#endif
 
 
 }

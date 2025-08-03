@@ -35,24 +35,6 @@ static void __reset_snd_grp(struct phl_snd_grp *grp)
 	}
 }
 
-static enum rtw_phl_status _phl_snd_init_snd_grp(
-	struct phl_info_t *phl_info)
-{
-	enum rtw_phl_status status = RTW_PHL_STATUS_SUCCESS;
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	struct phl_sound_param *param = &snd->snd_param;
-	u8 i = 0;
-	do {
-		status = RTW_PHL_STATUS_FAILURE;
-		break;
-		for (i = 0; i < MAX_SND_GRP_NUM; i++) {
-			__reset_snd_grp(&param->snd_grp[i]);
-			param->snd_grp[i].gidx = i;
-		}
-	} while (0);
-
-	return status;
-}
 #ifdef CONFIG_FSM
 /* For EXTERNAL application to create Sound object */
 /* @fsm: FSM main structure which created by phl_snd_new_fsm()
@@ -180,94 +162,7 @@ rtw_phl_sound_abort(void *phl)
 #endif
 }
 
-/* set fixed mode parameters APIs*/
-static void rtw_phl_snd_dump_fix_para(struct phl_info_t *phl_info)
-{
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	struct phl_snd_fix_param *para = NULL;
-	u8 i = 0;
 
-	para = &snd->snd_param.fix_param;
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "===> rtw_phl_snd_fix_dump_para \n");
-
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "test_flag = 0x%x \n", snd->snd_param.test_flag);
-
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "en_fix_gidx = %d \n", para->en_fix_gidx ? 1 : 0);
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "en_fix_fb_type = %d \n", para->en_fix_fb_type ? 1 : 0);
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "en_fix_sta = %d \n", para->en_fix_sta ? 1 : 0);
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "en_fix_snd_bw = %d \n", para->en_fix_snd_bw ? 1 : 0);
-
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "grp_idx = %d \n", para->grp_idx);
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "snd_fb_type = %d \n", para->snd_fb_type);
-
-	for (i = 0; i < MAX_NUM_STA_SND_GRP; i++) {
-		PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "sta_macid[i] = 0x%x \n", para->sta_macid[i]);
-		PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "bw[i] = %d \n",para->bw[i]);
-	}
-
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "<=== rtw_phl_snd_fix_dump_para \n");
-}
-/* fixed group idx */
-static void rtw_phl_snd_fix_gidx(struct phl_info_t *phl_info, bool en, u8 gidx)
-{
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "rtw_phl_snd_fix_gidx() set sounding gidx = 0x%x\n", gidx);
-	if (en) {
-		snd->snd_param.fix_param.en_fix_gidx = 1;
-		snd->snd_param.fix_param.grp_idx = gidx;
-	} else {
-		snd->snd_param.fix_param.en_fix_gidx = 0;
-	}
-}
-/* fixed snd feedback type */
-static void rtw_phl_snd_fix_snd_fb_type(struct phl_info_t *phl_info,
-				 bool en, enum snd_type fb_type)
-{
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "rtw_phl_snd_fix_gidx() set sounding fb_type = 0x%x\n",
-		 fb_type);
-	if (en) {
-		snd->snd_param.fix_param.en_fix_fb_type = 1;
-		snd->snd_param.fix_param.snd_fb_type = (enum snd_fb_type)fb_type;
-	} else {
-		snd->snd_param.fix_param.en_fix_fb_type = 0;
-	}
-}
-
-/* fixed sounding sta macids */
-static void rtw_phl_snd_fix_set_sta(struct phl_info_t *phl_info,
-					bool en, u8 sidx, u16 macid)
-{
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "rtw_phl_snd_fix_set_sta() set sta[%d] macid = 0x%x\n",
-		 sidx, macid);
-	if (en) {
-		snd->snd_param.fix_param.en_fix_sta = 1;
-		if (sidx < MAX_NUM_STA_SND_GRP)
-			snd->snd_param.fix_param.sta_macid[sidx] = macid;
-		else
-			PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "ERROR, sidx >= 4\n");
-	} else {
-		snd->snd_param.fix_param.en_fix_sta = 0;
-	}
-}
-
-/* fixed sounding sta bw */
-static void rtw_phl_snd_fix_set_bw(struct phl_info_t *phl_info,
-					bool en, u8 sidx, enum channel_width bw)
-{
-	struct phl_sound_obj *snd = (struct phl_sound_obj *)phl_info->snd_obj;
-	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "rtw_phl_snd_fix_set_bw() set sta[%d] bw = 0x%x\n", sidx, bw);
-	if (en) {
-		snd->snd_param.fix_param.en_fix_snd_bw = 1;
-		if (sidx < MAX_NUM_STA_SND_GRP)
-			snd->snd_param.fix_param.bw[sidx] = bw;
-		else
-			PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "ERROR, sidx >= 4\n");
-	} else {
-		snd->snd_param.fix_param.en_fix_snd_bw = 0;
-	}
-}
 
 /* set forced fw tx mu-mimo (forced fw tx decision) */
 void rtw_phl_snd_fix_tx_he_mu(struct phl_info_t *phl_info, u8 gid, bool en)

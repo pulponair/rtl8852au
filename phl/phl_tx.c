@@ -115,20 +115,6 @@ void phl_dump_t_fctrl_result(_os_list *t_fctrl_result)
 	}
 }
 
-static void phl_dump_tx_stats(struct rtw_stats *stats)
-{
-	PHL_TRACE(COMP_PHL_XMIT, _PHL_DEBUG_,
-		  "Dump Tx statistics\n"
-		  "tx_byte_uni = %lld\n"
-		  "tx_byte_total = %lld\n"
-		  "tx_tp_kbits = %d\n"
-		  "last_tx_time_ms = %d\n",
-		  stats->tx_byte_uni,
-		  stats->tx_byte_total,
-		  stats->tx_tp_kbits,
-		  stats->last_tx_time_ms);
-}
-
 void phl_dump_h2c_pool_stats(struct phl_h2c_pkt_pool *h2c_pkt_pool)
 {
 	PHL_INFO("[h2c_stats] idle cmd %d, idle data %d, idle ldata %d, busy h2c %d.\n",
@@ -1684,21 +1670,7 @@ static enum data_ctrl_mdl _phl_get_ctrl_mdl(enum phl_module_id id)
 }
 
 
-static enum rtw_phl_status
-_phl_poll_hw_tx_done(void)
-{
-	PHL_TRACE(COMP_PHL_XMIT, _PHL_ERR_, "[DATA_CTRL] Polling hw tx done is not supported now\n");
 
-	return RTW_PHL_STATUS_FAILURE;
-}
-
-static enum rtw_phl_status
-_phl_hw_tx_resume(void)
-{
-	PHL_TRACE(COMP_PHL_XMIT, _PHL_ERR_, "[DATA_CTRL] Resume hw tx not is supported now\n");
-
-	return RTW_PHL_STATUS_FAILURE;
-}
 
 static enum rtw_phl_status
 _phl_sw_tx_resume(struct phl_info_t *phl_info, struct phl_data_ctl_t *ctl)
@@ -1816,22 +1788,6 @@ _phl_sw_tx_pause(struct phl_info_t *phl_info,
 	}
 
 	return sts;
-}
-
-static enum rtw_phl_status
-_phl_poll_hw_rx_done(void)
-{
-	PHL_TRACE(COMP_PHL_RECV, _PHL_ERR_, "[DATA_CTRL] Polling hw rx done is not supported now\n");
-
-	return RTW_PHL_STATUS_FAILURE;
-}
-
-static enum rtw_phl_status
-_phl_hw_rx_resume(void)
-{
-	PHL_TRACE(COMP_PHL_RECV, _PHL_ERR_, "[DATA_CTRL] Resume hw rx not is supported now\n");
-
-	return RTW_PHL_STATUS_FAILURE;
 }
 
 static 	enum rtw_phl_status

@@ -2221,25 +2221,6 @@ static u32 efuse_map_init(struct mac_ax_adapter *adapter,
 	return MACSUCCESS;
 }
 
-static u32 efuse_fwcmd_ck(struct mac_ax_adapter *adapter)
-{
-/*Soar TBD*/
-#ifdef NEVER
-	u32 ret;
-
-	ret = fwcmd_wq_idle(adapter,
-			    SET_FWCMD_ID(FWCMD_TYPE_H2C,
-					 FWCMD_H2C_CAT_MAC,
-					 TBD,
-					 TBD));
-	if (ret != 0) {
-		PLTFM_MSG_WARN("[WARN]H2C not idle(efuse)\n");
-		return ret;
-	}
-#endif /* NEVER */
-	return MACSUCCESS;
-}
-
 static u32 efuse_proc_ck(struct mac_ax_adapter *adapter)
 {
 /*Soar TBD*/

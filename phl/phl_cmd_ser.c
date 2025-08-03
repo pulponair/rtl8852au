@@ -817,24 +817,6 @@ phl_register_ser_module(struct phl_info_t *phl_info)
 }
 
 #ifdef CONFIG_PHL_CMD_SER
-static u8 phl_ser_inprogress(void *phl)
-{
-	struct phl_module_op_info op_info = {0};
-	u8 state = 0;
-
-	op_info.op_code = BK_MODL_OP_STATE;
-	op_info.inbuf = (u8*)&state;
-	op_info.inlen = 1;
-
-	if (rtw_phl_query_bk_module_info(phl,
-	                                 HW_BAND_0,
-	                                 PHL_MDL_SER,
-	                                 &op_info) == RTW_PHL_STATUS_SUCCESS) {
-		if (state) /* non-CMD_SER_NOT_OCCUR */
-			return true;
-	}
-	return false;
-}
 
 enum rtw_phl_status
 phl_ser_send_msg(void *phl, enum RTW_PHL_SER_NOTIFY_EVENT notify)

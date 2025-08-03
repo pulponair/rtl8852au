@@ -37,20 +37,6 @@ enum {
 	PS_STATE_ENTERED
 };
 
-static const char *_ps_state_to_str(u8 ps_state)
-{
-	switch (ps_state) {
-	case PS_STATE_ENTERED:
-		return "PS_ENTERED";
-	case PS_STATE_PROTO:
-		return "PS_PROTOCOL";
-	case PS_STATE_LEAVED:
-		return "PS_LEAVED";
-	default:
-		return "NONE";
-	}
-}
-
 struct _ps_mr_info {
 	bool ap_active;
 	bool gc_active;
