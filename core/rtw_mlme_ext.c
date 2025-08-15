@@ -6905,19 +6905,30 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 			} else
 #endif
 			{
-#ifdef CONFIG_IOCTL_CFG80211
-				if (rtw_sec_chk_auth_alg(padapter, WLAN_AUTH_OPEN) &&
-					rtw_sec_chk_auth_type(padapter, MLME_AUTHTYPE_SAE)) {
-					s32 entry = rtw_cached_pmkid(padapter, pmlmepriv->assoc_bssid);
+				const u8 *cli = padapter->securitypriv.supplicant_ie;
+				u8 cli_len = cli ? cli[1] : 0;            /* [0]=EID(0x30), [1]=Len, [2..]=payload */
+				const u8 *cli_payload = (cli_len >= 2) ? (cli + 2) : NULL;
+				if (cli && cli[0] == EID_WPA2 && cli_len >= 2) {
+					/* === Preferred: RSN vom wpa_supplicant 1:1 anhängen === */
+					pframe = rtw_set_ie(pframe, EID_WPA2, cli_len, cli_payload, &(pattrib->pktlen));
+					RTW_INFO("ASSOC: appended supplicant RSN (len=%u)\n", cli_len);
+				} else {
 
-					rtw_rsn_sync_pmkid(padapter, (u8 *)pIE, (pIE->Length + 2), entry);
-				}
+
+#ifdef CONFIG_IOCTL_CFG80211
+					if (rtw_sec_chk_auth_alg(padapter, WLAN_AUTH_OPEN) &&
+						rtw_sec_chk_auth_type(padapter, MLME_AUTHTYPE_SAE)) {
+						s32 entry = rtw_cached_pmkid(padapter, pmlmepriv->assoc_bssid);
+
+						rtw_rsn_sync_pmkid(padapter, (u8 *)pIE, (pIE->Length + 2), entry);
+					}
 #endif /* CONFIG_IOCTL_CFG80211 */
 
-				pframe = rtw_set_ie(pframe, EID_WPA2, pIE->Length, pIE->data, &(pattrib->pktlen));
-				/* tmp: update rsn's spp related opt. */
-				rtw_set_spp_amsdu_mode(padapter->registrypriv.amsdu_mode, pframe - (pIE->Length + 2), pIE->Length +2);
-
+					pframe = rtw_set_ie(pframe, EID_WPA2, pIE->Length, pIE->data, &(pattrib->pktlen));
+					/* tmp: update rsn's spp related opt. */
+					rtw_set_spp_amsdu_mode(padapter->registrypriv.amsdu_mode, pframe - (pIE->Length + 2), pIE->Length +2);
+					RTW_INFO("ASSOC: appended AP RSN (fallback, len=%u)\n", pIE->Length);
+				}
 			}
 			break;
 #ifdef CONFIG_80211N_HT
