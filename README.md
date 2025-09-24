@@ -117,11 +117,11 @@ sudo make install
 **DKMS automatically rebuilds this driver when your kernel updates.**
 
 ```bash
-git clone git://github.com/pulponair/rtl8852au.git
+git clone https://github.com/pulponair/rtl8852au.git
 cd rtl8852au
 
 # Add the module using its current version (auto-read from dkms.conf)
-version=$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2)
+version==$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2 | tr -d '"')
 sudo dkms add .
 sudo dkms build rtl8852au/${version}
 sudo dkms install rtl8852au/${version}
@@ -138,7 +138,7 @@ modinfo 8852au
 ```bash
 cd rtl8852au
 git pull
-version=$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2)
+version==$(grep PACKAGE_VERSION dkms.conf | cut -d"=" -f2 | tr -d '"')
 sudo dkms remove rtl8852au/${version} --all
 sudo dkms add .
 sudo dkms build rtl8852au/${version}
