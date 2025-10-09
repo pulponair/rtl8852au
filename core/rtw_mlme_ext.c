@@ -6683,9 +6683,8 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 #endif
 #endif /* CONFIG_P2P */
 
-#if CONFIG_DFS
-	u16	cap;
-#endif
+	u16	cap = 0;
+	const u8 *assoc_ie_start = NULL;
 
 	if (rtw_rfctl_is_tx_blocked_by_ch_waiting(adapter_to_rfctl(padapter)))
 		goto exit;
@@ -6702,6 +6701,8 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 	_rtw_memset(pmgntframe->buf_addr, 0, WLANHDR_OFFSET + TXDESC_OFFSET);
 
 	pframe = (u8 *)(pmgntframe->buf_addr) + TXDESC_OFFSET;
+
+
 	pwlanhdr = (struct rtw_ieee80211_hdr *)pframe;
 
 	fctrl = &(pwlanhdr->frame_ctl);
@@ -6721,14 +6722,28 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 	pattrib->pktlen = sizeof(struct rtw_ieee80211_hdr_3addr);
 
 	/* caps */
+	struct registry_priv *pregistrypriv = &padapter->registrypriv;
+	WLAN_BSSID_EX *pdev_network = &pregistrypriv->dev_network;
 
+	cap |= cap_ESS; /* STA -> Infrastructure */
+
+	/* Privacy see rtw_generate_ie() */
+	if (pdev_network->Privacy)
+		cap |= cap_Privacy;
+
+	if (pmlmeext->chandef.chan <= 14) {
+		/* 2.4 GHz: Short Preamble from registry + Short Slot */
+		if (pregistrypriv->preamble == PREAMBLE_SHORT)
+			cap |= cap_ShortPremble;
+		cap |= cap_ShortSlot;
+	} else {
+		/* 5 GHz: if 11h-IEs (PowerCap/SupportedCh) send -> Spectrum Mgmt */
 #if CONFIG_DFS
-	_rtw_memcpy(&cap, rtw_get_capability_from_ie(pmlmeinfo->network.IEs), 2);
-	cap |= cap_SpecMgmt;
-	_rtw_memcpy(pframe, &cap, 2);
-#else
-	_rtw_memcpy(pframe, rtw_get_capability_from_ie(pmlmeinfo->network.IEs), 2);
+		cap |= cap_SpecMgmt;
 #endif
+	}
+
+	*(__le16 *)pframe = cpu_to_le16(cap);
 
 	pframe += 2;
 	pattrib->pktlen += 2;
@@ -6746,7 +6761,7 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 		pframe += ETH_ALEN;
 		pattrib->pktlen += ETH_ALEN;
 	}
-
+	assoc_ie_start = pframe;
 	/* SSID */
 	pframe = rtw_set_ie(pframe, _SSID_IE_,  pmlmeinfo->network.Ssid.SsidLength, pmlmeinfo->network.Ssid.Ssid, &(pattrib->pktlen));
 
@@ -6780,11 +6795,26 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 	/* supported rate & extended supported rate */
 
 #if 1	/* Check if the AP's supported rates are also supported by STA. */
-	get_rate_set(padapter, sta_bssrate, &sta_bssrate_len);
-	/* RTW_INFO("sta_bssrate_len=%d\n", sta_bssrate_len); */
+	u8 wireless_mode;
+	u8 ds = pmlmeext->chandef.chan;
 
-	if (pmlmeext->chandef.chan == 14) /* for JAPAN, channel 14 can only uses B Mode(CCK) */
-		sta_bssrate_len = 4;
+	if (padapter->registrypriv.wireless_mode == WLAN_MD_11ABGN) {
+		wireless_mode = (ds > 14) ? WLAN_MD_11AN : WLAN_MD_11BGN;
+	} else if (padapter->registrypriv.wireless_mode == WLAN_MD_MAX) { /* 11abgn|ac */
+		wireless_mode = (ds > 14) ? WLAN_MD_5G_MIX : WLAN_MD_24G_MIX;
+	} else {
+		wireless_mode = padapter->registrypriv.wireless_mode;
+	}
+
+	_rtw_memset(sta_bssrate, 0, sizeof(sta_bssrate));
+	rtw_set_supported_rate(sta_bssrate, wireless_mode, ds);
+	sta_bssrate_len = rtw_get_rateset_len(sta_bssrate);
+
+
+	if (ds == 14)
+		sta_bssrate_len = sta_bssrate_len > 4 ? 4 : sta_bssrate_len;
+
+	RTW_INFO("STA rates (mode=0x%x, chan=%u) len=%d\n", wireless_mode, ds, sta_bssrate_len);
 
 
 	/* for (i = 0; i < sta_bssrate_len; i++) { */
@@ -6860,6 +6890,217 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 	else
 		RTW_INFO("%s: Connect to AP without 11b and 11g data rate!\n", __FUNCTION__);
 
+
+	static const u8 wmm_info_ie[] = {
+		0xdd, 0x07,             /* EID + Len */
+		0x00, 0x50, 0xf2, 0x02, /* OUI */
+		0x00,                   /* WMM Info Element */
+		0x01,                   /* Version */
+		0x00                    /* QoS Info: U-APSD disabled */
+	};
+	_rtw_memcpy(pframe, wmm_info_ie, sizeof(wmm_info_ie));
+	pframe += sizeof(wmm_info_ie);
+	pattrib->pktlen += sizeof(wmm_info_ie);
+	RTW_INFO("Added WMM Information IE (Subtype 0)\n");
+
+
+#ifdef CONFIG_80211N_HT
+/* ---- HT Capabilities (client) from cfg80211 wiphy, strict 26-byte IE ---- */
+{
+    /* Determine band from operating channel */
+    enum nl80211_band band =
+        (pmlmeext->chandef.chan <= 14) ? NL80211_BAND_2GHZ : NL80211_BAND_5GHZ;
+
+    /* Obtain wiphy */
+    struct wiphy *wiphy = NULL;
+#ifdef CONFIG_IOCTL_CFG80211
+    if (adapter_wdev_data(padapter) && adapter_wdev_data(padapter)->rtw_wdev)
+        wiphy = adapter_wdev_data(padapter)->rtw_wdev->wiphy;
+#endif
+#if !defined(CONFIG_IOCTL_CFG80211)
+    if (!wiphy && padapter->rtw_wdev)
+        wiphy = padapter->rtw_wdev->wiphy;
+#endif
+
+    if (wiphy && wiphy->bands[band]
+        && wiphy->bands[band]->ht_cap.ht_supported
+        && padapter->mlmepriv.htpriv.ht_option == _TRUE) {
+
+        const struct ieee80211_sta_ht_cap *hc = &wiphy->bands[band]->ht_cap;
+
+        /* Build the on-the-wire HT Capabilities IE (exactly 26 bytes) */
+        u8 ht_ie[26] = {0};
+
+        /* [0..1] HT Capabilities Info (le16) */
+        *(__le16 *)&ht_ie[0] = cpu_to_le16(hc->cap);
+
+        /* [2] A-MPDU params: factor (bits 0-1), density (bits 2-4) */
+        ht_ie[2] = (hc->ampdu_factor & 0x3) | ((hc->ampdu_density & 0x7) << 2);
+
+        /* [3..12] RX MCS mask (10 bytes) */
+        _rtw_memcpy(&ht_ie[3], hc->mcs.rx_mask, 10);
+
+        /* [13..14] RX highest rate (le16) */
+        *(__le16 *)&ht_ie[13] = cpu_to_le16(hc->mcs.rx_highest);
+
+        /* [15] TX params */
+        ht_ie[15] = hc->mcs.tx_params;
+
+        /* [16..17] HT Extended Capabilities (leave 0 unless you set bits) */
+        /* [18..21] Transmit Beamforming Capabilities (leave 0 unless supported) */
+        /* [22] ASEL Capabilities (leave 0 unless supported) */
+        /* [23..25] reserved/unused -> 0 */
+
+        pframe = rtw_set_ie(pframe, EID_HTCapability, sizeof(ht_ie),
+                            ht_ie, &(pattrib->pktlen));
+        RTW_INFO("Added HT Cap IE (len=%zu, cap=0x%04x, dens=%u, fact=%u)\n",
+                 sizeof(ht_ie), hc->cap, hc->ampdu_density, hc->ampdu_factor);
+    } else {
+        RTW_INFO("Skip HT Cap (wiphy ht_cap unsupported or ht_option=0)\n");
+    }
+}
+#endif /* CONFIG_80211N_HT */
+#ifdef CONFIG_80211AC_VHT
+	/* ---- VHT Capabilities (client, 5GHz) from cfg80211 wiphy ---- */
+	{
+		enum nl80211_band band =
+			(pmlmeext->chandef.chan <= 14) ? NL80211_BAND_2GHZ : NL80211_BAND_5GHZ;
+
+		struct wiphy *wiphy = NULL;
+#ifdef CONFIG_IOCTL_CFG80211
+		if (adapter_wdev_data(padapter) && adapter_wdev_data(padapter)->rtw_wdev)
+			wiphy = adapter_wdev_data(padapter)->rtw_wdev->wiphy;
+#endif
+#if !defined(CONFIG_IOCTL_CFG80211)
+		if (padapter->rtw_wdev)
+			wiphy = padapter->rtw_wdev->wiphy;
+#endif
+
+		if (band == NL80211_BAND_5GHZ && wiphy && wiphy->bands[band]
+			&& wiphy->bands[band]->vht_cap.vht_supported
+			&& padapter->mlmepriv.vhtpriv.vht_option == _TRUE) {
+
+			const struct ieee80211_sta_vht_cap *vc = &wiphy->bands[band]->vht_cap;
+			u8 vht[12] = {0};
+
+			/* VHT Capabilities Info (u32) */
+			*(__le32 *)&vht[0] = cpu_to_le32(vc->cap);
+
+			/* RX/TX MCS Maps (je __le16) */
+			*(__le16 *)&vht[4] = vc->vht_mcs.rx_mcs_map;
+			*(__le16 *)&vht[6] = vc->vht_mcs.tx_mcs_map;
+
+			/* Optional: Highest Supported Data Rate (je __le16) */
+			*(__le16 *)&vht[8]  = cpu_to_le16(vc->vht_mcs.rx_highest);
+			*(__le16 *)&vht[10] = cpu_to_le16(vc->vht_mcs.tx_highest);
+
+			pframe = rtw_set_ie(pframe, EID_VHTCapability, sizeof(vht),
+								vht, &(pattrib->pktlen));
+			RTW_INFO("Added VHT Cap from wiphy (cap=0x%08x)\n", vc->cap);
+			} else {
+				RTW_INFO("Skip VHT Cap (not 5GHz or wiphy vht unsupported or vht_option=0)\n");
+			}
+	}
+#endif
+#ifdef CONFIG_80211AX_HE
+/* ---- Add HE (802.11ax) Capabilities as STA (from cfg80211 wiphy) ---- */
+{
+    enum nl80211_band band =
+        (pmlmeext->chandef.chan <= 14) ? NL80211_BAND_2GHZ : NL80211_BAND_5GHZ;
+
+    struct wiphy *wiphy = NULL;
+#ifdef CONFIG_IOCTL_CFG80211
+    if (adapter_wdev_data(padapter) && adapter_wdev_data(padapter)->rtw_wdev)
+        wiphy = adapter_wdev_data(padapter)->rtw_wdev->wiphy;
+#endif
+#if !defined(CONFIG_IOCTL_CFG80211)
+    if (!wiphy && padapter->rtw_wdev)
+        wiphy = padapter->rtw_wdev->wiphy;
+#endif
+
+    const struct ieee80211_sta_he_cap *hec = NULL;
+
+#if defined(CONFIG_CFG80211) || defined(CONFIG_IOCTL_CFG80211)
+    if (wiphy && wiphy->bands[band]) {
+        const struct ieee80211_supported_band *sband = wiphy->bands[band];
+
+        if (sband->iftype_data && sband->n_iftype_data) {
+            /* figure out current iftype bitmask (we’re a STA here) */
+            u32 want_mask = 0;
+#ifdef CONFIG_IOCTL_CFG80211
+            if (adapter_wdev_data(padapter) && adapter_wdev_data(padapter)->rtw_wdev)
+                want_mask = BIT(adapter_wdev_data(padapter)->rtw_wdev->iftype);
+#endif
+#if !defined(CONFIG_IOCTL_CFG80211)
+            if (!want_mask && padapter->rtw_wdev)
+                want_mask = BIT(padapter->rtw_wdev->iftype);
+#endif
+
+            for (int i = 0; i < sband->n_iftype_data; i++) {
+                const struct ieee80211_sband_iftype_data *it = &sband->iftype_data[i];
+
+                /* kernels differ: field is either `types` or `types_mask` */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0))
+                u32 mask = it->types_mask;
+#else
+                u32 mask = it->types;
+#endif
+                if (!want_mask || (mask & want_mask)) {
+                    hec = &it->he_cap;
+                    break;
+                }
+            }
+
+            /* fallback: if only one entry exists, use it */
+            if (!hec && sband->n_iftype_data == 1)
+                hec = &sband->iftype_data[0].he_cap;
+        }
+
+        /* Older kernels: if your tree exposes a band-level he_cap, enable this: */
+        /* if (!hec) hec = &sband->he_cap; */
+    }
+#endif /* CFG80211 */
+
+    if (hec && hec->has_he && padapter->mlmepriv.hepriv.he_option == _TRUE) {
+        struct ieee80211_he_cap_elem he_elem = hec->he_cap_elem;
+        const struct ieee80211_he_mcs_nss_supp *mcs = &hec->he_mcs_nss_supp;
+
+        size_t ppe_len = 0;
+#ifdef IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT
+        if (he_elem.phy_cap_info[6] & IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT) {
+            /* If no helper available, clear PPE bit and omit PPE data */
+            he_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT;
+            ppe_len = 0;
+        }
+#endif
+        u8 ext_len = 1 + sizeof(he_elem) + sizeof(*mcs) + ppe_len;
+
+        *pframe++ = WLAN_EID_EXTENSION;                   /* 0xFF */
+        *pframe++ = ext_len;                              /* payload length */
+        *pframe++ = WLAN_EID_EXTENSION_HE_CAPABILITY;     /* 0x23 */
+
+        _rtw_memcpy(pframe, &he_elem, sizeof(he_elem));
+        pframe += sizeof(he_elem);
+
+        _rtw_memcpy(pframe, mcs, sizeof(*mcs));
+        pframe += sizeof(*mcs);
+
+        if (ppe_len) {
+            /* _rtw_memcpy(pframe, hec->ppe_thres, ppe_len); */
+            pframe += ppe_len;
+        }
+
+        pattrib->pktlen += 2 + ext_len;
+        RTW_INFO("Added HE Cap from wiphy\n");
+    } else {
+        RTW_INFO("Skip HE Cap (no HE support or disabled)\n");
+    }
+}
+#endif
+
+
+
+
 #ifdef CONFIG_RTW_MBO
 	rtw_mbo_build_assoc_req_ies(padapter, &pframe, pattrib);
 #endif
@@ -6881,22 +7122,27 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 		pIE = (PNDIS_802_11_VARIABLE_IEs)(pmlmeinfo->network.IEs + i);
 
 		switch (pIE->ElementID) {
-		case _VENDOR_SPECIFIC_IE_:
-			if ((_rtw_memcmp(pIE->data, RTW_WPA_OUI, 4)) ||
-			    (_rtw_memcmp(pIE->data, WMM_OUI, 4)) ||
-			    (_rtw_memcmp(pIE->data, WPS_OUI, 4))) {
-				vs_ie_length = pIE->Length;
-				if ((!padapter->registrypriv.wifi_spec) && (_rtw_memcmp(pIE->data, WPS_OUI, 4))) {
-					/* Commented by Kurt 20110629 */
-					/* In some older APs, WPS handshake */
-					/* would be fail if we append vender extensions informations to AP */
-
-					vs_ie_length = 14;
+			case _VENDOR_SPECIFIC_IE_:
+				/* WPA (00:50:F2:01) allowed  */
+				if (_rtw_memcmp(pIE->data, RTW_WPA_OUI, 4)) {
+					pframe = rtw_set_ie(pframe, _VENDOR_SPECIFIC_IE_,
+					                    pIE->Length, pIE->data, &(pattrib->pktlen));
+				}
+				/* WPS (00:50:F2:04) allows */
+				else if (_rtw_memcmp(pIE->data, WPS_OUI, 4)) {
+					u8 wps_len = pIE->Length;
+					if (!padapter->registrypriv.wifi_spec) /* wie im Original */
+						wps_len = 14;
+					pframe = rtw_set_ie(pframe, _VENDOR_SPECIFIC_IE_,
+					                    wps_len, pIE->data, &(pattrib->pktlen));
+				}
+				/* WMM (00:50:F2:02) and anything else ignore */
+				else {
+					RTW_INFO("Skip Vendor IE OUI %02x:%02x:%02x:%02x from AP\n",
+					         pIE->data[0], pIE->data[1], pIE->data[2], pIE->data[3]);
 				}
 
-				pframe = rtw_set_ie(pframe, _VENDOR_SPECIFIC_IE_, vs_ie_length, pIE->data, &(pattrib->pktlen));
-			}
-			break;
+				break;
 
 		case EID_WPA2:
 #ifdef CONFIG_RTW_80211R
@@ -6905,56 +7151,55 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 			} else
 #endif
 			{
-#ifdef CONFIG_IOCTL_CFG80211
-				if (rtw_sec_chk_auth_alg(padapter, WLAN_AUTH_OPEN) &&
-					rtw_sec_chk_auth_type(padapter, MLME_AUTHTYPE_SAE)) {
-					s32 entry = rtw_cached_pmkid(padapter, pmlmepriv->assoc_bssid);
+				const u8 *cli = padapter->securitypriv.supplicant_ie;
+				u8 cli_len = cli ? cli[1] : 0;            /* [0]=EID(0x30), [1]=Len, [2..]=payload */
+				const u8 *cli_payload = (cli_len >= 2) ? (cli + 2) : NULL;
+				if (cli && cli[0] == EID_WPA2 && cli_len >= 2) {
+					/* === Preferred: RSN vom wpa_supplicant 1:1 anhängen === */
+					pframe = rtw_set_ie(pframe, EID_WPA2, cli_len, cli_payload, &(pattrib->pktlen));
+					RTW_INFO("ASSOC: appended supplicant RSN (len=%u)\n", cli_len);
+				} else {
 
-					rtw_rsn_sync_pmkid(padapter, (u8 *)pIE, (pIE->Length + 2), entry);
-				}
+
+#ifdef CONFIG_IOCTL_CFG80211
+					if (rtw_sec_chk_auth_alg(padapter, WLAN_AUTH_OPEN) &&
+						rtw_sec_chk_auth_type(padapter, MLME_AUTHTYPE_SAE)) {
+						s32 entry = rtw_cached_pmkid(padapter, pmlmepriv->assoc_bssid);
+
+						rtw_rsn_sync_pmkid(padapter, (u8 *)pIE, (pIE->Length + 2), entry);
+					}
 #endif /* CONFIG_IOCTL_CFG80211 */
 
-				pframe = rtw_set_ie(pframe, EID_WPA2, pIE->Length, pIE->data, &(pattrib->pktlen));
-				/* tmp: update rsn's spp related opt. */
-				rtw_set_spp_amsdu_mode(padapter->registrypriv.amsdu_mode, pframe - (pIE->Length + 2), pIE->Length +2);
-
+					pframe = rtw_set_ie(pframe, EID_WPA2, pIE->Length, pIE->data, &(pattrib->pktlen));
+					/* tmp: update rsn's spp related opt. */
+					rtw_set_spp_amsdu_mode(padapter->registrypriv.amsdu_mode, pframe - (pIE->Length + 2), pIE->Length +2);
+					RTW_INFO("ASSOC: appended AP RSN (fallback, len=%u)\n", pIE->Length);
+				}
 			}
 			break;
 #ifdef CONFIG_80211N_HT
 		case EID_HTCapability:
-			if (padapter->mlmepriv.htpriv.ht_option == _TRUE) {
-				if (!(is_ap_in_tkip(padapter))) {
-					_rtw_memcpy(&(pmlmeinfo->HT_caps), pIE->data, sizeof(struct HT_caps_element));
-
-					pmlmeinfo->HT_caps.u.HT_cap_element.HT_caps_info = cpu_to_le16(pmlmeinfo->HT_caps.u.HT_cap_element.HT_caps_info);
-
-					pframe = rtw_set_ie(pframe, EID_HTCapability, pIE->Length , (u8 *)(&(pmlmeinfo->HT_caps)), &(pattrib->pktlen));
-				}
-			}
+			RTW_INFO("Skip AP HT IE in AssocReq (id=%u len=%u)\n", pIE->ElementID, pIE->Length);
 			break;
 #endif /* CONFIG_80211N_HT */
 
 		case WLAN_EID_EXT_CAP:
-			pframe = rtw_set_ie(pframe, WLAN_EID_EXT_CAP, pIE->Length, pIE->data, &(pattrib->pktlen));
+			RTW_INFO("Skip AP Extended Capabilities IE (len=%u)\n", pIE->Length);
 			break;
 
 #ifdef CONFIG_80211AC_VHT
-		case EID_VHTCapability:
-			if (padapter->mlmepriv.vhtpriv.vht_option == _TRUE)
-				pframe = rtw_set_ie(pframe, EID_VHTCapability, pIE->Length, pIE->data, &(pattrib->pktlen));
-			break;
-
+			case EID_VHTCapability:
 		case EID_OpModeNotification:
-			if (padapter->mlmepriv.vhtpriv.vht_option == _TRUE)
-				pframe = rtw_set_ie(pframe, EID_OpModeNotification, pIE->Length, pIE->data, &(pattrib->pktlen));
+				RTW_INFO("Skip AP VHT IE in AssocReq (id=%u len=%u)\n",pIE->ElementID, pIE->Length);
+				break;
 			break;
 #endif /* CONFIG_80211AC_VHT */
 #ifdef CONFIG_80211AX_HE
 		case WLAN_EID_EXTENSION:
-			if ((pIE->data[0] == WLAN_EID_EXTENSION_HE_CAPABILITY)
-				&& (padapter->mlmepriv.hepriv.he_option == _TRUE))
-				pframe = rtw_set_ie(pframe, WLAN_EID_EXTENSION, pIE->Length, pIE->data, &(pattrib->pktlen));
-			break;
+			if (pIE->Length >= 1 && pIE->data[0] == WLAN_EID_EXTENSION_HE_CAPABILITY) {
+				RTW_INFO("Skip AP HE Cap IE (len=%u)\n", pIE->Length);
+				break; /* nicht übernehmen */
+			}
 #endif /* CONFIG_80211AX_HE */
 		default:
 			break;
@@ -7018,6 +7263,40 @@ void _issue_assocreq(_adapter *padapter, u8 is_reassoc)
 #endif
 
 	pattrib->last_txcmdsz = pattrib->pktlen;
+	if (assoc_ie_start) {
+		size_t ie_len = pframe - assoc_ie_start;
+		RTW_INFO("ASSOC: final IE blob len=%zu\n", ie_len);
+		print_hex_dump(KERN_INFO, "ASSOC IEs: ", DUMP_PREFIX_OFFSET, 16, 1,
+					   assoc_ie_start, ie_len, false);
+
+		/* Zähle & logge die wichtigsten IEs kurz: */
+		const u8 *s = assoc_ie_start;
+		while (s + 2 <= pframe) {
+			u8 id = s[0], len = s[1];
+			if (s + 2 + len > pframe) break;
+
+			if (id == 1)  RTW_INFO("IE SupportedRates len=%u\n", len);
+			if (id == 50) RTW_INFO("IE ExtSupportedRates len=%u\n", len);
+			if (id == 3)  RTW_INFO("IE DS Params (chan=%u)\n", s[2]);
+			if (id == 45) RTW_INFO("IE HT Cap len=%u\n", len);
+			if (id == 61) RTW_INFO("IE HT Op: primary=%u, sec_off=%u\n", s[2], (s[3] & 0x3));
+			if (id == 191) RTW_INFO("IE VHT Cap len=%u\n", len);
+			if (id == 192) RTW_INFO("IE VHT Op: chwidth=%u, seg0=%u, seg1=%u\n", s[2], s[3], s[4]);
+			if (id == 0xdd && len >= 5 && s[2]==0x00 && s[3]==0x50 && s[4]==0xF2 && s[5]==0x02)
+				RTW_INFO("IE WME: subtype=0x%02x (0x00=Info expected)\n", len>=6? s[6] : 0xff);
+			if (id == 0x30) {
+				u16 caps = (len>=20) ? (s[20] | (s[21]<<8)) : 0xffff;
+				RTW_INFO("IE RSN len=%u caps=0x%04x\n", len, caps);
+			}
+			/* Power Cap (ID 33), Supported Channels (ID 36) */
+			if (id == 33) RTW_INFO("IE PowerCap len=%u (min=%d max=%d dBm)\n", len, (s[2]), (s[3]));
+			if (id == 36) RTW_INFO("IE SupportedCh len=%u\n", len);
+
+			s += 2 + len;
+		}
+	}
+
+
 	dump_mgntframe(padapter, pmgntframe);
 
 	ret = _SUCCESS;
