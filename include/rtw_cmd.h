@@ -133,7 +133,6 @@ thread_return rtw_cmd_thread(thread_context context);
 u32 rtw_init_cmd_priv(struct dvobj_priv *dvobj);
 void rtw_free_cmd_priv(struct dvobj_priv *dvobj);
 
-#ifdef CONFIG_IOCTL_CFG80211 
 u8 rtw_mgnt_tx_cmd(_adapter *adapter, u8 tx_ch, u8 no_cck, const u8 *buf, size_t len, int wait_ack, u8 flags);
 struct mgnt_tx_parm {
 	u8 tx_ch;
@@ -142,7 +141,6 @@ struct mgnt_tx_parm {
 	size_t len;
 	int wait_ack;
 };
-#endif
 
 enum rtw_drvextra_cmd_id {
 	NONE_WK_CID, /*MCC_CMD_WK_CID*/

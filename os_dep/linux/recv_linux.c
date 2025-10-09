@@ -490,9 +490,7 @@ void rtw_os_recv_indicate_pkt(_adapter *padapter, struct sk_buff *pkt,
 
 void rtw_handle_tkip_mic_err(_adapter *padapter, struct sta_info *sta, u8 bgroup)
 {
-#ifdef CONFIG_IOCTL_CFG80211
 	enum nl80211_key_type key_type = 0;
-#endif
 	union iwreq_data wrqu;
 	struct iw_michaelmicfailure    ev;
 	struct security_priv	*psecuritypriv = &padapter->securitypriv;
@@ -511,14 +509,12 @@ void rtw_handle_tkip_mic_err(_adapter *padapter, struct sta_info *sta, u8 bgroup
 			psecuritypriv->last_mic_err_time = rtw_get_current_time();
 	}
 
-#ifdef CONFIG_IOCTL_CFG80211
 	if (bgroup)
 		key_type |= NL80211_KEYTYPE_GROUP;
 	else
 		key_type |= NL80211_KEYTYPE_PAIRWISE;
 
 	cfg80211_michael_mic_failure(padapter->pnetdev, sta->phl_sta->mac_addr, key_type, -1, NULL, GFP_ATOMIC);
-#endif
 
 	_rtw_memset(&ev, 0x00, sizeof(ev));
 	if (bgroup)
@@ -532,9 +528,6 @@ void rtw_handle_tkip_mic_err(_adapter *padapter, struct sta_info *sta, u8 bgroup
 	_rtw_memset(&wrqu, 0x00, sizeof(wrqu));
 	wrqu.data.length = sizeof(ev);
 
-#ifndef CONFIG_IOCTL_CFG80211
-	wireless_send_event(padapter->pnetdev, IWEVMICHAELMICFAILURE, &wrqu, (char *) &ev);
-#endif
 }
 
 #ifdef CONFIG_HOSTAPD_MLME

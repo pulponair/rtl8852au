@@ -16,7 +16,6 @@
 
 #include <drv_types.h>
 
-#ifdef CONFIG_IOCTL_CFG80211
 
 #ifndef DBG_RTW_CFG80211_STA_PARAM
 #define DBG_RTW_CFG80211_STA_PARAM 0
@@ -9558,4 +9557,3 @@ void rtw_cfg80211_dev_res_unregister(struct dvobj_priv *dvobj)
 	rtw_wiphy_unregister(dvobj_to_wiphy(dvobj));
 }
 
-#endif /* CONFIG_IOCTL_CFG80211 */

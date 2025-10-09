@@ -19,20 +19,6 @@
 /********************************xmit section*******************************/
 #ifdef CONFIG_USB_TX_AGGREGATION
 #define IDEA_CONDITION 1	/* check all packets before enqueue */
-static s32 usb_xmitframe_process(_adapter *padapter,
-		struct xmit_priv *pxmitpriv, struct xmit_buf *pxmitbuf)
-{	
-	return _TRUE;
-}
-
-#else /* CONFIG_USB_TX_AGGREGATION */
-
-static s32 usb_xmitframe_process(_adapter *padapter,
-		struct xmit_priv *pxmitpriv, struct xmit_buf *pxmitbuf)
-{
-	return _TRUE;
-
-}
 #endif
 
 

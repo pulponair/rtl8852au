@@ -61,7 +61,6 @@ void dump_drv_cfg(void *sel)
 	RTW_PRINT_SEL(sel, "Driver Version: %s\n", DRIVERVERSION);
 	RTW_PRINT_SEL(sel, "------------------------------------------------\n");
 
-#ifdef CONFIG_IOCTL_CFG80211
 	RTW_PRINT_SEL(sel, "CFG80211\n");
 #ifdef RTW_USE_CFG80211_STA_EVENT
 	RTW_PRINT_SEL(sel, "RTW_USE_CFG80211_STA_EVENT\n");
@@ -69,9 +68,6 @@ void dump_drv_cfg(void *sel)
 	#ifdef CONFIG_RADIO_WORK
 	RTW_PRINT_SEL(sel, "CONFIG_RADIO_WORK\n");
 	#endif
-#else
-	RTW_PRINT_SEL(sel, "WEXT\n");
-#endif
 
 	RTW_PRINT_SEL(sel, "DBG:%d\n", DBG);
 #ifdef CONFIG_RTW_DEBUG
@@ -366,13 +362,8 @@ void dump_adapters_status(void *sel, struct dvobj_priv *dvobj)
 #ifdef CONFIG_P2P
 #define P2P_INFO_TITLE_FMT	" %-3s %-4s"
 #define P2P_INFO_TITLE_ARG	, "lch", "p2ps"
-#ifdef CONFIG_IOCTL_CFG80211
 #define P2P_INFO_VALUE_FMT	" %3u %c"
 #define P2P_INFO_VALUE_ARG	, iface->wdinfo.listen_channel, iface->wdev_data.p2p_enabled ? 'e' : ' '
-#else
-#define P2P_INFO_VALUE_FMT	" %3u"
-#define P2P_INFO_VALUE_ARG	, iface->wdinfo.listen_channel
-#endif
 #define P2P_INFO_DASH		"---------"
 #else
 #define P2P_INFO_TITLE_FMT	""

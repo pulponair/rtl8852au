@@ -401,21 +401,6 @@ _phl_chanctx_del(struct phl_info_t *phl_info,
 	return RTW_PHL_STATUS_SUCCESS;
 }
 
-static enum rtw_phl_status
-_phl_chanctx_del_with_lock(struct phl_info_t *phl_info,
-			struct phl_queue *chan_ctx_queue,
-			struct rtw_chan_ctx *chanctx)
-{
-	void *drv = phl_to_drvpriv(phl_info);
-
-	if (!chanctx)
-		return RTW_PHL_STATUS_FAILURE;
-
-	_os_spinlock(drv, &chan_ctx_queue->lock, _ps, NULL);
-	_phl_chanctx_del(phl_info, chan_ctx_queue, chanctx);
-	_os_spinunlock(drv, &chan_ctx_queue->lock, _ps, NULL);
-	return RTW_PHL_STATUS_SUCCESS;
-}
 
 static inline enum rtw_phl_status
 _phl_chanctx_rmap_set(struct phl_info_t *phl_info,

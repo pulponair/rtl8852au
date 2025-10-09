@@ -19,21 +19,7 @@
 
 #define case_pwr_state(src) \
 	case PS_PWR_STATE_##src: return #src
-static const char *hal_ps_pwr_state_to_str(u8 pwr_state)
-{
-	switch (pwr_state) {
-	case_pwr_state(ACTIVE);
-	case_pwr_state(BAND0_RFON);
-	case_pwr_state(BAND1_RFON);
-	case_pwr_state(BAND0_RFOFF);
-	case_pwr_state(BAND1_RFOFF);
-	case_pwr_state(CLK_GATED);
-	case_pwr_state(PWR_GATED);
-	case_pwr_state(MAX);
-	default:
-		return "Undefined";
-	}
-}
+
 
 #define LPS_PROTOCAL_LEAVE_TOLERANCE 25 /* ms */
 #define PWR_LVL_CHANGE_TOLERANCE 50 /* ms */

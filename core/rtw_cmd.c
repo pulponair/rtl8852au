@@ -2916,35 +2916,6 @@ void rtw_iface_dynamic_chk_wk_hdl(_adapter *padapter)
 
 }
 
-static void rtw_dynamic_chk_wk_hdl(_adapter *padapter)
-{
-	rtw_mi_dynamic_chk_wk_hdl(padapter);
-
-#ifdef DBG_CONFIG_ERROR_DETECT
-	rtw_hal_sreset_xmit_status_check(padapter);
-	rtw_hal_sreset_linked_status_check(padapter);
-#endif
-
-	/* if(check_fwstate(pmlmepriv, WIFI_UNDER_LINKING|WIFI_UNDER_SURVEY)==_FALSE) */
-	{
-#ifdef DBG_RX_COUNTER_DUMP
-		rtw_dump_rx_counters(padapter);
-#endif
-	}
-
-#ifdef CONFIG_RTW_MULTI_AP
-	rtw_ch_util_rpt(padapter);
-#endif
-
-#ifdef CONFIG_DFS_MASTER
-	rtw_chset_chk_non_ocp_finish(adapter_to_rfctl(padapter));
-#endif
-
-#ifdef CONFIG_IPS_CHECK_IN_WD
-	/* always call rtw_ps_processor() at last one. */
-	rtw_ps_processor(padapter);
-#endif
-}
 
 void rtw_dynamic_chk_wk_sw_hdl(_adapter *padapter)
 {
@@ -3283,7 +3254,6 @@ static void reset_securitypriv_hdl(_adapter *padapter)
 	rtw_reset_securitypriv(padapter);
 }
 
-#ifdef CONFIG_IOCTL_CFG80211
 #if 0 /*!CONFIG_PHL_ARCH*/
 static u8 _p2p_roch_cmd(_adapter *adapter
 	, u64 cookie, struct wireless_dev *wdev
@@ -3439,7 +3409,6 @@ inline u8 rtw_mgnt_tx_cmd(_adapter *adapter, u8 tx_ch, u8 no_cck, const u8 *buf,
 exit:
 	return res;
 }
-#endif
 
 #ifdef CONFIG_POWER_SAVING
 u8 rtw_ps_cmd(_adapter *padapter)
@@ -6291,11 +6260,9 @@ u8 rtw_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
 		break;
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	case MGNT_TX_WK_CID:
 		ret = rtw_mgnt_tx_handler(padapter, pdrvextra_cmd->pbuf);
 		break;
-#endif /* CONFIG_IOCTL_CFG80211 */
 #if defined(CONFIG_RTW_MESH) && defined(RTW_PER_CMD_SUPPORT_FW)
 	case REQ_PER_CMD_WK_CID:
 		ret = rtw_req_per_cmd_hdl(padapter);
@@ -6454,18 +6421,6 @@ void rtw_setstaKey_cmdrsp_callback(_adapter *padapter ,  struct cmd_obj *pcmd)
 exit:
 
 	rtw_free_cmd_obj(pcmd);
-
-
-}
-
-static void rtw_getrttbl_cmd_cmdrsp_callback(_adapter *padapter,  struct cmd_obj *pcmd)
-{
-
-	rtw_free_cmd_obj(pcmd);
-#ifdef CONFIG_MP_INCLUDED
-	if (padapter->registrypriv.mp_mode == 1)
-		padapter->mppriv.workparam.bcompleted = _TRUE;
-#endif
 
 
 }

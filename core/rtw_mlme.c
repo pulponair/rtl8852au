@@ -353,24 +353,6 @@ exit:
 	return;
 }
 
-static sint	_rtw_enqueue_network(_queue *queue, struct wlan_network *pnetwork)
-{
-
-	if (pnetwork == NULL)
-		goto exit;
-
-	_rtw_spinlock_bh(&queue->lock);
-
-	rtw_list_insert_tail(&pnetwork->list, &queue->queue);
-
-	_rtw_spinunlock_bh(&queue->lock);
-
-exit:
-
-
-	return _SUCCESS;
-}
-
 /*
 struct	wlan_network *_rtw_dequeue_network(_queue *queue)
 {
@@ -597,24 +579,11 @@ void rtw_free_mlme_priv(struct mlme_priv *pmlmepriv)
 	_rtw_free_mlme_priv(pmlmepriv);
 }
 
-static int rtw_enqueue_network(_queue *queue, struct wlan_network *pnetwork)
-{
-	int	res;
-	res = _rtw_enqueue_network(queue, pnetwork);
-	return res;
-}
-
-static void rtw_free_network(struct mlme_priv *pmlmepriv, struct	wlan_network *pnetwork, u8 is_freeall)/* (struct	wlan_network *pnetwork, _queue	*free_queue) */
-{
-	_rtw_free_network(pmlmepriv, pnetwork, is_freeall);
-}
 
 static void rtw_free_network_nolock(_adapter *padapter, struct wlan_network *pnetwork)
 {
 	_rtw_free_network_nolock(&(padapter->mlmepriv), pnetwork);
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_unlink_bss(padapter, pnetwork);
-#endif /* CONFIG_IOCTL_CFG80211 */
 }
 
 
@@ -1917,9 +1886,7 @@ static u32 _rtw_wait_join_done(_adapter *adapter, u8 abort, u32 timeout_ms)
 
 	while (rtw_get_passing_time_ms(start) <= timeout_ms
 		&& (check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)
-			#ifdef CONFIG_IOCTL_CFG80211
 			|| rtw_cfg80211_is_connect_requested(adapter)
-			#endif
 			)
 	) {
 		if (RTW_CANNOT_RUN(adapter_to_dvobj(adapter)))
@@ -1931,9 +1898,7 @@ static u32 _rtw_wait_join_done(_adapter *adapter, u8 abort, u32 timeout_ms)
 
 	if (abort) {
 		if (check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)
-			#ifdef CONFIG_IOCTL_CFG80211
 			|| rtw_cfg80211_is_connect_requested(adapter)
-			#endif
 		) {
 			if (!RTW_CANNOT_RUN(adapter_to_dvobj(adapter)))
 				RTW_INFO(FUNC_ADPT_FMT" waiting for join_abort time out!\n", FUNC_ADPT_ARG(adapter));
@@ -2477,7 +2442,6 @@ void rtw_stassoc_event_callback(_adapter *adapter, u8 *pbuf)
 			if (!MLME_IS_MESH(adapter)) {
 				/* report to upper layer */
 				RTW_INFO("indicate_sta_assoc_event to upper layer - hostapd\n");
-				#ifdef CONFIG_IOCTL_CFG80211
 				_rtw_spinlock_bh(&psta->lock);
 				if (psta->passoc_req && psta->assoc_req_len > 0) {
 					passoc_req = rtw_zmalloc(psta->assoc_req_len);
@@ -2492,9 +2456,6 @@ void rtw_stassoc_event_callback(_adapter *adapter, u8 *pbuf)
 					rtw_cfg80211_indicate_sta_assoc(adapter, passoc_req, assoc_req_len);
 					rtw_mfree(passoc_req, assoc_req_len);
 				}
-				#else /* !CONFIG_IOCTL_CFG80211	 */
-				rtw_indicate_sta_assoc_event(adapter, psta);
-				#endif /* !CONFIG_IOCTL_CFG80211 */
 			}
 #endif /* !CONFIG_AUTO_AP_MODE */
 
@@ -2814,10 +2775,8 @@ void rtw_join_timeout_handler(void *ctx)
 		rtw_indicate_disconnect(adapter, pmlmepriv->join_status, _FALSE);
 		free_scanqueue(pmlmepriv);/* ??? */
 
-#ifdef CONFIG_IOCTL_CFG80211
 		/* indicate disconnect for the case that join_timeout and check_fwstate != FW_LINKED */
 		rtw_cfg80211_indicate_disconnect(adapter, pmlmepriv->join_status, _FALSE);
-#endif /* CONFIG_IOCTL_CFG80211 */
 	}
 
 	pmlmepriv->join_status = 0; /* reset */
@@ -2904,17 +2863,7 @@ static void rtw_auto_scan_handler(_adapter *padapter)
 exit:
 	return;
 }
-static u8 is_drv_in_lps(_adapter *adapter)
-{
-	u8 is_in_lps = _FALSE;
 
-	#ifdef CONFIG_LPS_LCLK_WD_TIMER /* to avoid leaving lps 32k frequently*/
-	if ((adapter_to_pwrctl(adapter)->bFwCurrentInPSMode == _TRUE)
-		)
-		is_in_lps = _TRUE;
-	#endif /* CONFIG_LPS_LCLK_WD_TIMER*/
-	return is_in_lps;
-}
 
 void rtw_iface_dynamic_check_handlder(struct _ADAPTER *a)
 {
@@ -2952,46 +2901,6 @@ if (!adapter_use_wds(a)) {
 #endif /* CONFIG_BR_EXT */
 }
 
-static void rtw_iface_dynamic_check_timer_handlder(_adapter *adapter)
-{
-#ifdef CONFIG_AP_MODE
-	struct mlme_priv *pmlmepriv = &adapter->mlmepriv;
-#endif /* CONFIG_AP_MODE */
-
-	if (!adapter->netif_up)
-		return;
-	#ifdef CONFIG_LPS_LCLK_WD_TIMER /* to avoid leaving lps 32k frequently*/
-	if (is_drv_in_lps(adapter)) {
-		u8 bEnterPS;
-
-		linked_status_chk(adapter, 1);
-
-		bEnterPS = traffic_status_watchdog(adapter, 1);
-		#if 0 /*PS TODO ...*/
-		if (bEnterPS) {
-			/* rtw_lps_ctrl_wk_cmd(adapter, LPS_CTRL_ENTER, 0); */
-			rtw_hal_dm_watchdog_in_lps(adapter);
-		} else {
-			/* call rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_LEAVE, 0) in traffic_status_watchdog() */
-		}
-		#endif
-	}
-	#endif /* CONFIG_LPS_LCLK_WD_TIMER	*/
-
-#ifdef CONFIG_AP_MODE
-	if (MLME_IS_AP(adapter)|| MLME_IS_MESH(adapter)) {
-		#ifndef CONFIG_ACTIVE_KEEP_ALIVE_CHECK
-		expire_timeout_chk(adapter);
-		#endif /* !CONFIG_ACTIVE_KEEP_ALIVE_CHECK */
-
-		#ifdef CONFIG_BMC_TX_RATE_SELECT
-		rtw_update_bmc_sta_tx_rate(adapter);
-		#endif /*CONFIG_BMC_TX_RATE_SELECT*/
-	}
-#endif /*CONFIG_AP_MODE*/
-
-	rtw_iface_dynamic_check_handlder(adapter);
-}
 
 /*TP_avg(t) = (1/10) * TP_avg(t-1) + (9/10) * TP(t) MBps*/
 static void collect_sta_traffic_statistics(_adapter *adapter)
@@ -5365,9 +5274,7 @@ static enum phl_mdl_ret_code _connect_abort(void* dispr, void *priv)
 		_rtw_spinlock_bh(&a->mlmepriv.lock);
 		a->mlmepriv.join_status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 		rtw_indicate_disconnect(a, a->mlmepriv.join_status, _FALSE);
-#ifdef CONFIG_IOCTL_CFG80211
 		rtw_cfg80211_indicate_disconnect(a, a->mlmepriv.join_status, _FALSE);
-#endif /* CONFIG_IOCTL_CFG80211 */
 		a->mlmepriv.join_status = 0;
 		_rtw_spinunlock_bh(&a->mlmepriv.lock);
 	}

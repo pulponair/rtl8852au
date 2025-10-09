@@ -306,9 +306,7 @@ void rtw_scan_timeout_handler(void *ctx)
 	_clr_fwstate_(pmlmepriv, WIFI_UNDER_SURVEY);
 	_rtw_spinunlock_bh(&pmlmepriv->lock);
 
-	#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_surveydone_event_callback(adapter);
-	#endif /* CONFIG_IOCTL_CFG80211 */
 	rtw_indicate_scan_done(adapter, _TRUE);
 #endif
 }
@@ -795,9 +793,7 @@ void rtw_surveydone_event_callback(_adapter *adapter, u8 *pbuf)
 	}
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_surveydone_event_callback(adapter);
-#endif /* CONFIG_IOCTL_CFG80211 */
 
 	rtw_indicate_scan_done(adapter, pmlmeext->scan_abort);
 
@@ -863,13 +859,11 @@ u8 _rtw_sitesurvey_condition_check(const char *caller, _adapter *adapter, bool c
 	}
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	if (adapter_wdev_data(adapter)->block_scan == _TRUE) {
 		RTW_INFO("%s ("ADPT_FMT") wdev_priv.block_scan is set\n", caller, ADPT_ARG(adapter));
 		ss_condition = SS_DENY_BLOCK_SCAN;
 		goto _exit;
 	}
-#endif
 
 	if (adapter_to_dvobj(adapter)->scan_deny == _TRUE) {
 		RTW_INFO("%s ("ADPT_FMT") tpt mode, scan deny!\n", caller, ADPT_ARG(adapter));
@@ -1499,9 +1493,6 @@ void site_survey(_adapter *padapter, u8 survey_channel,
 	u8 ssid_scan = 0;
 
 #ifdef CONFIG_P2P
-#ifndef CONFIG_IOCTL_CFG80211
-	struct wifidirect_info *pwdinfo = &(padapter->wdinfo);
-#endif
 #endif
 
 	if (survey_channel != 0) {
@@ -1515,12 +1506,7 @@ void site_survey(_adapter *padapter, u8 survey_channel,
 			ssid_scan = 1;
 		else if (ScanType == RTW_PHL_SCAN_ACTIVE) {
 #ifdef CONFIG_P2P
-			#ifdef CONFIG_IOCTL_CFG80211
 			if (rtw_cfg80211_is_p2p_scan(padapter))
-			#else
-			if (rtw_p2p_chk_state(pwdinfo, P2P_STATE_SCAN)
-				|| rtw_p2p_chk_state(pwdinfo, P2P_STATE_FIND_PHASE_SEARCH))
-			#endif
 			{
 				issue_probereq_p2p(padapter, NULL);
 				issue_probereq_p2p(padapter, NULL);
@@ -1585,10 +1571,8 @@ void survey_done_set_ch_bw(_adapter *padapter)
 			if (!iface)
 				continue;
 
-#ifdef CONFIG_IOCTL_CFG80211
 			if (iface->wdinfo.driver_interface == DRIVER_CFG80211 && !adapter_wdev_data(iface)->p2p_enabled)
 				continue;
-#endif
 
 			if (rtw_p2p_chk_state(&iface->wdinfo, P2P_STATE_LISTEN)) {
 				cur_channel = iface->wdinfo.listen_channel;
@@ -1626,11 +1610,9 @@ void sitesurvey_set_igi(_adapter *adapter)
 	switch (mlmeext_scan_state(mlmeext)) {
 	case SCAN_ENTER:
 		#ifdef CONFIG_P2P
-		#ifdef CONFIG_IOCTL_CFG80211
 		if (pwdinfo->driver_interface == DRIVER_CFG80211 && rtw_cfg80211_is_p2p_scan(adapter))
 			igi = 0x30;
 		else
-		#endif /* CONFIG_IOCTL_CFG80211 */
 		if (!rtw_p2p_chk_state(pwdinfo, P2P_STATE_NONE))
 			igi = 0x28;
 		else
@@ -3070,7 +3052,6 @@ static struct rtw_phl_scan_ops remain_ops_cb = {
 	.scan_issue_null_data = scan_issu_null_data_cb
 };
 
-#ifdef CONFIG_IOCTL_CFG80211
 static u8 roch_stay_in_cur_chan(_adapter *padapter)
 {
 	int i;
@@ -3267,6 +3248,5 @@ u8 rtw_phl_remain_on_ch_cmd(_adapter *padapter,
 	return res;
 }
 #endif
-#endif /*CONFIG_IOCTL_CFG80211*/
 
 #endif /*CONFIG_PHL_ARCH*/

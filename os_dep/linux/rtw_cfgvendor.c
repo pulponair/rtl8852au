@@ -15,7 +15,6 @@
 
 #include <drv_types.h>
 
-#ifdef CONFIG_IOCTL_CFG80211
 
 
 
@@ -1293,4 +1292,3 @@ int rtw_cfgvendor_detach(struct wiphy *wiphy)
 }
 
 
-#endif /* CONFIG_IOCTL_CFG80211 */

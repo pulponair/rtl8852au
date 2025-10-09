@@ -23,8 +23,6 @@ static u32 stop_macid_ctn(struct mac_ax_adapter *adapter,
 			  struct mac_role_tbl *role,
 			  struct mac_ax_sch_tx_en_cfg *bak);
 static u32 tx_idle_ck(struct mac_ax_adapter *adapter, u8 band);
-static u32 tx_idle_sel_ck(struct mac_ax_adapter *adapter, enum ptcl_tx_sel sel,
-			  u8 band);
 static u32 tx_idle_sel_ck_b(struct mac_ax_adapter *adapter,
 			    enum ptcl_tx_sel sel, u8 band);
 static u32 macid_idle_ck(struct mac_ax_adapter *adapter,
@@ -1165,64 +1163,6 @@ static u32 tx_idle_ck(struct mac_ax_adapter *adapter, u8 band)
 					break;
 				PLTFM_DELAY_US(SW_CVR_DUR_US);
 			}
-			if (i >= SW_CVR_CNT)
-				break;
-		}
-	}
-	if (!cnt)
-		return MACPOLLTXIDLE;
-
-	return MACSUCCESS;
-}
-
-static u32 tx_idle_sel_ck(struct mac_ax_adapter *adapter, enum ptcl_tx_sel sel,
-			  u8 band)
-{
-	u32 cnt;
-	u8 val8;
-	u32 ret;
-	u32 poll_addr;
-	u32 i;
-	u8 ptcl_tx_qid;
-	struct mac_ax_intf_ops *ops = adapter_to_intf_ops(adapter);
-
-	ret = check_mac_en(adapter, band, MAC_AX_CMAC_SEL);
-	if (ret != MACSUCCESS)
-		return ret;
-
-	poll_addr = band ? R_AX_PTCL_TX_CTN_SEL_C1 : R_AX_PTCL_TX_CTN_SEL;
-
-	switch (sel) {
-	case PTCL_TX_SEL_HIQ:
-		ptcl_tx_qid = PTCL_TXQ_HIQ;
-		break;
-	case PTCL_TX_SEL_MG0:
-		ptcl_tx_qid = PTCL_TXQ_MG0;
-		break;
-	default:
-		return MACNOITEM;
-	}
-
-	cnt = PTCL_IDLE_POLL_CNT;
-	while (--cnt) {
-		val8 = MAC_REG_R8(poll_addr);
-		if (val8 & B_AX_PTCL_TX_ON_STAT) {
-			if (GET_FIELD(val8, B_AX_PTCL_TX_QUEUE_IDX) ==
-			    ptcl_tx_qid)
-				PLTFM_DELAY_US(SW_CVR_DUR_US);
-			else
-				break;
-		} else {
-			for (i = 0; i < SW_CVR_CNT; i++) {
-				val8 = MAC_REG_R8(poll_addr);
-				if (val8 & B_AX_PTCL_TX_ON_STAT)
-					break;
-				PLTFM_DELAY_US(SW_CVR_DUR_US);
-			}
-			if ((val8 & B_AX_PTCL_TX_ON_STAT) &&
-			    GET_FIELD(val8, B_AX_PTCL_TX_QUEUE_IDX) !=
-			    ptcl_tx_qid)
-				break;
 			if (i >= SW_CVR_CNT)
 				break;
 		}

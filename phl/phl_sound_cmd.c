@@ -480,33 +480,6 @@ exit:
 
 }
 
-/**
- * For other module, such as LPS, direct set aid.
- **/
-static enum rtw_phl_status
-phl_snd_cmd_set_aid_info(struct phl_info_t *phl,
-			 struct rtw_wifi_role_t *wrole,
-			 struct rtw_phl_stainfo_t *sta,
-			 u16 aid)
-{
-	enum rtw_phl_status phl_status = RTW_PHL_STATUS_FAILURE;
-	struct phl_module_op_info op_info = {0};
-	struct snd_cmd_set_aid cmdbuf = {0};
-	PHL_TRACE(COMP_PHL_DBG, _PHL_INFO_, "--> %s\n", __func__);
-
-	cmdbuf.aid = aid;
-	cmdbuf.sta_info = sta;
-
-	op_info.op_code = SND_CMD_OP_SET_AID;
-	op_info.inbuf = (u8 *)&cmdbuf;
-	op_info.inlen = sizeof(struct snd_cmd_set_aid);
-
-	phl_status = phl_disp_eng_set_bk_module_info(phl, wrole->hw_band,
-						     PHL_MDL_SOUND, &op_info);
-
-	PHL_TRACE(COMP_PHL_DBG, _PHL_INFO_, "<-- %s\n", __func__);
-	return phl_status;
-}
 
 #ifdef RTW_WKARD_BFEE_SET_AID
 enum rtw_phl_status

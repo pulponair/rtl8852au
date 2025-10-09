@@ -260,13 +260,6 @@ static enum rtw_hal_status hal_query_info_8852au(struct hal_info_t *hal, u8 info
 	return hstatus;
 }
 
-static enum rtw_hal_status hal_pltfm_tx_8852au(void *hal,
-							struct rtw_h2c_pkt *pkt)
-{
-	enum rtw_hal_status hstatus = RTW_HAL_STATUS_FAILURE;
-
-	return hstatus;
-}
 
 u8 hal_get_bulkout_id_8852au(struct hal_info_t *hal, u8 dma_ch, u8 mode)
 {

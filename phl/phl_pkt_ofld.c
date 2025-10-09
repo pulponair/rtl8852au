@@ -14,34 +14,6 @@
  *****************************************************************************/
 #include "phl_headers.h"
 
-static const char *
-_phl_pkt_ofld_get_txt(u8 type)
-{
-	switch (type)
-	{
-		case PKT_TYPE_PROBE_RSP:
-			return "PROBE RSP";
-		case PKT_TYPE_PS_POLL:
-			return "PS POLL";
-		case PKT_TYPE_NULL_DATA:
-			return "NULL DATA";
-		case PKT_TYPE_QOS_NULL:
-			return "QOS NULL";
-		case PKT_TYPE_CTS2SELF:
-			return "CTS2SELF";
-		case PKT_TYPE_ARP_RSP:
-			return "ARP Response";
-		case PKT_TYPE_NDP:
-			return "Neighbor Discovery Protocol";
-		case PKT_TYPE_EAPOL_KEY:
-			return "EAPOL-KEY";
-		case PKT_TYPE_SA_QUERY:
-			return "SA QUERY";
-		default:
-			return "Unknown?!";
-	}
-}
-
 static u8
 _phl_pkt_ofld_is_pkt_ofld(struct pkt_ofld_info *pkt_info)
 {

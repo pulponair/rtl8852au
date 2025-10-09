@@ -736,7 +736,6 @@ void rtw_chk_candidate_peer_notify(_adapter *adapter, struct wlan_network *scann
 	}
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_notify_new_peer_candidate(adapter->rtw_wdev
 		, scanned->network.MacAddress
 		, BSS_EX_TLV_IES(&scanned->network)
@@ -744,7 +743,6 @@ void rtw_chk_candidate_peer_notify(_adapter *adapter, struct wlan_network *scann
 		, scanned->network.PhyInfo.rssi
 		, GFP_ATOMIC
 	);
-#endif
 
 exit:
 	return;
@@ -1960,7 +1958,6 @@ unsigned int on_action_self_protected(_adapter *adapter, union recv_frame *rfram
 	case RTW_ACT_SELF_PROTECTED_MESH_GK_ACK:
 		if (!(MLME_IS_MESH(adapter) && MLME_IS_ASOC(adapter)))
 			goto exit;
-#ifdef CONFIG_IOCTL_CFG80211
 		#if CONFIG_RTW_MACADDR_ACL
 		if (rtw_access_ctrl(adapter, get_addr2_ptr(pframe)) == _FALSE)
 			goto exit;
@@ -1973,7 +1970,6 @@ unsigned int on_action_self_protected(_adapter *adapter, union recv_frame *rfram
 		#endif
 		rtw_cfg80211_rx_action(adapter, rframe, NULL);
 		ret = _SUCCESS;
-#endif /* CONFIG_IOCTL_CFG80211 */
 		break;
 	default:
 		break;
@@ -2762,7 +2758,6 @@ void rtw_mesh_expire_peer_notify(_adapter *adapter, const u8 *peer_addr)
 {
 	u8 null_ssid[2] = {0, 0};
 
-#ifdef CONFIG_IOCTL_CFG80211
 	rtw_cfg80211_notify_new_peer_candidate(adapter->rtw_wdev
 		, peer_addr
 		, null_ssid
@@ -2770,7 +2765,6 @@ void rtw_mesh_expire_peer_notify(_adapter *adapter, const u8 *peer_addr)
 		, 0
 		, GFP_ATOMIC
 	);
-#endif
 
 	return;
 }

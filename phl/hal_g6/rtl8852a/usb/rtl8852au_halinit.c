@@ -126,10 +126,6 @@ enum rtw_hal_status hal_start_8852au(struct rtw_phl_com_t *phl_com,
 	return hal_start_8852a(phl_com, hal_info, &init_52au);
 }
 
-static void hal_deinit_misc_8852au(struct hal_info_t *hal)
-{
-
-}
 #ifdef CONFIG_WOWLAN
 enum rtw_hal_status
 hal_wow_init_8852au(struct rtw_phl_com_t *phl_com, struct hal_info_t *hal_info,

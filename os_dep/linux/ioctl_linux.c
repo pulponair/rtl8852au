@@ -84,9 +84,6 @@ void indicate_wx_scan_complete_event(_adapter *padapter)
 	_rtw_memset(&wrqu, 0, sizeof(union iwreq_data));
 
 	/* RTW_INFO("+rtw_indicate_wx_scan_complete_event\n"); */
-#ifndef CONFIG_IOCTL_CFG80211
-	wireless_send_event(padapter->pnetdev, SIOCGIWSCAN, &wrqu, NULL);
-#endif
 }
 
 
@@ -108,9 +105,6 @@ void rtw_indicate_wx_assoc_event(_adapter *padapter)
 		_rtw_memcpy(wrqu.ap_addr.sa_data, pmlmepriv->cur_network.network.MacAddress, ETH_ALEN);
 
 	RTW_PRINT("assoc success\n");
-#ifndef CONFIG_IOCTL_CFG80211
-	wireless_send_event(padapter->pnetdev, SIOCGIWAP, &wrqu, NULL);
-#endif
 }
 
 void rtw_indicate_wx_disassoc_event(_adapter *padapter)
@@ -122,10 +116,6 @@ void rtw_indicate_wx_disassoc_event(_adapter *padapter)
 	wrqu.ap_addr.sa_family = ARPHRD_ETHER;
 	_rtw_memset(wrqu.ap_addr.sa_data, 0, ETH_ALEN);
 
-#ifndef CONFIG_IOCTL_CFG80211
-	RTW_PRINT("indicate disassoc\n");
-	wireless_send_event(padapter->pnetdev, SIOCGIWAP, &wrqu, NULL);
-#endif
 }
 
 

@@ -246,33 +246,6 @@ void _update_btc_state_map(struct btc_t *btc)
 	}
 }
 
-static void _set_bt_golden_rx_range(struct btc_t *btc, u8 p_id, u8 level)
-{
-	struct btc_bt_link_info *bt_linfo = &btc->cx.bt.link_info;
-	u8 buf[2] = {0}, pos = 0, i;
-
-	if (p_id > BTC_BT_PAN)
-		return;
-
-	for (i = 0; i< BTC_PROFILE_MAX; i++) {
-		if ((p_id >> i) & 0x1) {
-			pos = i;
-			break;
-		}
-	}
-
-	if (bt_linfo->golden_rx_shift[pos] == level)
-		return;
-
-	bt_linfo->golden_rx_shift[pos] = level;
-
-	PHL_TRACE(COMP_PHL_BTC, _PHL_DEBUG_, "[BTC], %s(): p_id=%d, level=%d\n",
-		  __func__, p_id, level);
-
-	buf[0] = level;
-	buf[1] = pos;
-	hal_btc_fw_set_bt(btc, SET_BT_GOLDEN_RX_RANGE, sizeof(buf), buf);
-}
 
 static void _set_bt_afh_info(struct btc_t *btc)
 {
@@ -963,20 +936,6 @@ static void _set_policy(struct btc_t *btc, u16 policy_type, const char* action)
 		mode = FC_EXEC;
 
 	_update_poicy(btc, mode, policy_type, action);
-}
-
-static u8 _get_wl_role_idx(struct btc_t *btc, u8 role)
-{
-	struct btc_wl_role_info *wl_rinfo = &btc->cx.wl.role_info;
-	u8 i, pid = 0;
-
-	for (i = 0; i < MAX_WIFI_ROLE_NUMBER; i++) {
-		if (wl_rinfo->active_role[i].role == role)
-			break;
-	}
-
-	pid = i;
-	return pid;
 }
 
 void _set_gnt_wl(struct btc_t *btc, u8 phy_map, u8 state)

@@ -22,7 +22,6 @@ enum rtw_dv_sel dv_sel = DDV;
 
 static u32 efuse_map_init(struct mac_ax_adapter *adapter,
 			  enum efuse_map_sel map_sel);
-static u32 efuse_fwcmd_ck(struct mac_ax_adapter *adapter);
 static u32 efuse_proc_ck(struct mac_ax_adapter *adapter);
 static u32 cnv_efuse_state(struct mac_ax_adapter *adapter, u8 dest_state);
 static u32 switch_efuse_bank(struct mac_ax_adapter *adapter,
@@ -2219,25 +2218,6 @@ static u32 efuse_map_init(struct mac_ax_adapter *adapter,
 		break;
 	}
 
-	return MACSUCCESS;
-}
-
-static u32 efuse_fwcmd_ck(struct mac_ax_adapter *adapter)
-{
-/*Soar TBD*/
-#ifdef NEVER
-	u32 ret;
-
-	ret = fwcmd_wq_idle(adapter,
-			    SET_FWCMD_ID(FWCMD_TYPE_H2C,
-					 FWCMD_H2C_CAT_MAC,
-					 TBD,
-					 TBD));
-	if (ret != 0) {
-		PLTFM_MSG_WARN("[WARN]H2C not idle(efuse)\n");
-		return ret;
-	}
-#endif /* NEVER */
 	return MACSUCCESS;
 }
 

@@ -206,36 +206,6 @@ void rtw_phl_mr_dump_band_ctl(void *phl, bool show_caller)
 #endif /*PHL_MR_PROC_CMD*/
 #endif /*DBG_PHL_MR*/
 
-static struct rtw_wifi_role_t *_search_ld_sta_wrole(struct rtw_wifi_role_t *wrole, u8 exclude_self)
-{
-	u8 ridx = 0;
-	struct rtw_phl_com_t *phl_com = wrole->phl_com;
-	struct rtw_chan_ctx *chanctx = wrole->chanctx;
-	struct rtw_wifi_role_t *wr = NULL;
-
-	if (chanctx == NULL) {
-		PHL_ERR("%s wifi role(%d) chan ctx is null\n", __func__, wrole->id);
-		goto exit;
-	}
-
-	for (ridx = 0; ridx < MAX_WIFI_ROLE_NUMBER; ridx++) {
-		if (chanctx->role_map & BIT(ridx)) {
-			wr = &phl_com->wifi_roles[ridx];
-			if (wr) {
-				if ((exclude_self) && (wr == wrole))
-					continue;
-				if (wr->type == PHL_RTYPE_STATION || wr->type == PHL_RTYPE_TDLS)
-					break;
-			}
-		}
-	}
-
-	if (wr)
-		PHL_INFO("search Linked STA wifi role (%d)\n", wr->id);
-exit:
-	return wr;
-}
-
 void rtw_phl_mr_dump_cur_chandef(void *phl, struct rtw_wifi_role_t *wrole)
 {
 	#ifdef	PHL_MR_PROC_CMD
@@ -1453,27 +1423,6 @@ _exit:
 	return phl_sts;
 }
 
-static enum rtw_phl_status
-rtw_phl_mr_upt_chandef(void *phl, struct rtw_wifi_role_t *wifi_role)
-{
-	struct phl_info_t *phl_info = (struct phl_info_t *)phl;
-	struct rtw_phl_com_t *phl_com = phl_info->phl_com;
-	struct mr_ctl_t *mr_ctl = phlcom_to_mr_ctrl(phl_com);
-	struct hw_band_ctl_t *band_ctrl = &(mr_ctl->band_ctrl[wifi_role->hw_band]);
-	enum rtw_phl_status phl_sts = RTW_PHL_STATUS_FAILURE;
-
-	if (!wifi_role->chanctx) {
-		PHL_ERR("%s failed - wifi_role->chanctx == NULL\n", __func__);
-		goto _exit;
-	}
-	phl_sts = phl_mr_chandef_upt(phl_info, band_ctrl, wifi_role->chanctx);
-	if (phl_sts != RTW_PHL_STATUS_SUCCESS)
-		PHL_ERR("%s phl_mr_chandef_upt failed\n", __func__);
-
-_exit:
-	return phl_sts;
-}
-
 enum rtw_phl_status
 phl_mr_get_chandef(struct phl_info_t *phl_info, struct rtw_wifi_role_t *wifi_role,
 			bool sync, struct rtw_chan_def *chandef)
@@ -2421,36 +2370,6 @@ __phl_mr_process(struct rtw_wifi_role_t *wrole,
 		}
 	}
 	return ret;
-}
-
-static u8 _phl_mr_process_by_mrc(struct phl_info_t *phl_info,
-		struct rtw_wifi_role_t *wrole, bool exclude_self, void *data,
-		u8(*ops_func)(struct rtw_wifi_role_t *wrole, void *data))
-{
-	struct mr_ctl_t *mr_ctl = phlcom_to_mr_ctrl(wrole->phl_com);
-
-	return __phl_mr_process(wrole, mr_ctl->role_map, exclude_self, data, ops_func);
-}
-
-static u8 _phl_mr_process_by_band(struct phl_info_t *phl_info,
-		struct rtw_wifi_role_t *wrole, bool exclude_self, void *data,
-		u8(*ops_func)(struct rtw_wifi_role_t *wrole, void *data))
-{
-	struct mr_ctl_t *mr_ctl = phlcom_to_mr_ctrl(wrole->phl_com);
-	struct hw_band_ctl_t *band_ctrl = &(mr_ctl->band_ctrl[wrole->hw_band]);
-
-	return __phl_mr_process(wrole, band_ctrl->role_map, exclude_self, data, ops_func);
-}
-
-static u8 _phl_mr_process_by_chctx(struct phl_info_t *phl_info,
-		struct rtw_wifi_role_t *wrole, bool exclude_self, void *data,
-		u8(*ops_func)(struct rtw_wifi_role_t *wrole, void *data))
-{
-	struct rtw_chan_ctx *chanctx = wrole->chanctx;
-
-	if (!chanctx)
-		return 0;
-	return __phl_mr_process(wrole, chanctx->role_map, exclude_self, data, ops_func);
 }
 
 static u8 _phl_mr_process(struct phl_info_t *phl_info,

@@ -23,14 +23,10 @@ static u32 hw_link_drop(struct mac_ax_adapter *adapter,
 static u32 macid_pkt_drop_all(struct mac_ax_adapter *adapter, u8 macid);
 static u32 ac_pkt_drop(struct mac_ax_adapter *adapter, u8 macid,
 		       enum pkt_drop_ac ac);
-static u32 deq_enq_to_tail(struct mac_ax_adapter *adapter,
-			   struct deq_enq_info *info);
 static u32 deq_enq_all(struct mac_ax_adapter *adapter,
 		       struct deq_enq_info *info);
 static u32 get_1st_pktid(struct mac_ax_adapter *adapter,
 			 struct first_pid_info *info);
-static u32 get_next_pktid(struct mac_ax_adapter *adapter,
-			  struct next_pid_info *info);
 static void set_dmac_macid_drop(struct mac_ax_adapter *adapter, u8 macid);
 static void set_cmac_macid_drop(struct mac_ax_adapter *adapter, u8 macid);
 static void rel_dmac_macid_drop(struct mac_ax_adapter *adapter, u8 macid);
@@ -657,31 +653,6 @@ static u32 ac_pkt_drop(struct mac_ax_adapter *adapter, u8 macid,
 	return ret;
 }
 
-static u32 deq_enq_to_tail(struct mac_ax_adapter *adapter,
-			   struct deq_enq_info *info)
-{
-	struct cpuio_ctrl_t cpuio;
-	u32 ret;
-
-	PLTFM_MEMSET(&cpuio, 0, sizeof(struct cpuio_ctrl_t));
-
-	cpuio.cmd_type = CPUIO_OP_CMD_DEQ_ENQ_TO_TAIL;
-	cpuio.macid = info->macid;
-	cpuio.pkt_num = 0;
-	cpuio.src_pid = info->src_pid;
-	cpuio.src_qid = info->src_qid;
-	cpuio.dst_pid = info->dst_pid;
-	cpuio.dst_qid = info->dst_qid;
-	cpuio.start_pktid = info->pktid;
-	cpuio.end_pktid = info->pktid;
-
-	ret = mac_set_cpuio_wd(adapter, &cpuio);
-	if (ret != MACSUCCESS)
-		return ret;
-
-	return MACSUCCESS;
-}
-
 static u32 deq_enq_all(struct mac_ax_adapter *adapter,
 		       struct deq_enq_info *info)
 {
@@ -727,26 +698,6 @@ static u32 get_1st_pktid(struct mac_ax_adapter *adapter,
 	cpuio.macid = info->macid;
 	cpuio.src_pid = info->src_pid;
 	cpuio.src_qid = info->src_qid;
-	ret = mac_set_cpuio_wd(adapter, &cpuio);
-
-	info->pktid = cpuio.pktid;
-
-	return ret;
-}
-
-static u32 get_next_pktid(struct mac_ax_adapter *adapter,
-			  struct next_pid_info *info)
-{
-	u32 ret = MACSUCCESS;
-	struct cpuio_ctrl_t cpuio;
-
-	PLTFM_MEMSET(&cpuio, 0, sizeof(struct cpuio_ctrl_t));
-
-	cpuio.cmd_type = CPUIO_OP_CMD_GET_NEXT_PID;
-	cpuio.macid = info->macid;
-	cpuio.src_pid = info->src_pid;
-	cpuio.src_qid = info->src_qid;
-	cpuio.start_pktid = info->start_pktid;
 	ret = mac_set_cpuio_wd(adapter, &cpuio);
 
 	info->pktid = cpuio.pktid;

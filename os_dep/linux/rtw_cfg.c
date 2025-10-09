@@ -921,14 +921,12 @@ uint rtw_max_unassoc_sta_cnt = 0;
 module_param(rtw_max_unassoc_sta_cnt, uint, 0644);
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 uint rtw_roch_min_home_dur = 1500;
 uint rtw_roch_max_away_dur = 500;
 uint rtw_roch_extend_dur = 500;
 module_param(rtw_roch_min_home_dur, uint, 0644);
 module_param(rtw_roch_max_away_dur, uint, 0644);
 module_param(rtw_roch_extend_dur, uint, 0644);
-#endif
 
 static void rtw_regsty_load_target_tx_power(struct registry_priv *regsty)
 {
@@ -1604,11 +1602,9 @@ int rtw_stbc_cap = 0x13;
 	rtw_regsty_init_unassoc_sta_param(registry_par);
 #endif
 
-#ifdef CONFIG_IOCTL_CFG80211
 	registry_par->roch_min_home_dur = (u16)rtw_roch_min_home_dur;
 	registry_par->roch_max_away_dur = (u16)rtw_roch_max_away_dur;
 	registry_par->roch_extend_dur = (u16)rtw_roch_extend_dur;
-#endif
 
 #if defined(ROKU_PRIVATE) && defined(CONFIG_P2P)
 	registry_par->go_hidden_ssid_mode = rtw_go_hidden_ssid_mode;

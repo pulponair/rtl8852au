@@ -1268,7 +1268,6 @@ enum P2P_PS_MODE {
 #define IP_MCAST_MAC(mac)		((mac[0] == 0x01) && (mac[1] == 0x00) && (mac[2] == 0x5e))
 #define ICMPV6_MCAST_MAC(mac)	((mac[0] == 0x33) && (mac[1] == 0x33) && (mac[2] != 0xff))
 
-#ifdef CONFIG_IOCTL_CFG80211
 /* Regulatroy Domain */
 struct regd_pair_mapping {
 	u16 reg_dmnenum;
@@ -1286,7 +1285,6 @@ struct rtw_regulatory {
 	int16_t power_limit;
 	struct regd_pair_mapping *regpair;
 };
-#endif
 
 #ifdef CONFIG_WAPI_SUPPORT
 #ifndef IW_AUTH_WAPI_VERSION_1

@@ -176,17 +176,6 @@ u8 * ccmp_decrypt(_adapter *padapter, const u8 *tk, const struct ieee80211_hdr *
 }
 
 
-static void ccmp_get_pn(u8 *pn, const u8 *data)
-{
-	pn[0] = data[7]; /* PN5 */
-	pn[1] = data[6]; /* PN4 */
-	pn[2] = data[5]; /* PN3 */
-	pn[3] = data[4]; /* PN2 */
-	pn[4] = data[1]; /* PN1 */
-	pn[5] = data[0]; /* PN0 */
-}
-
-
 u8 * ccmp_encrypt(_adapter *padapter, const u8 *tk, u8 *frame, size_t len, size_t hdrlen, u8 *qos,
 		  u8 *pn, int keyid, size_t *encrypted_len)
 {

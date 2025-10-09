@@ -1196,11 +1196,7 @@ u32 rtw_hal_var_init(struct rtw_phl_com_t *phl_com, void *hal)
 	return hal_status;
 }
 
-static int
-_hal_parse_macreg(void *drv_priv, u32 *pdest_buf, u8 *psrc_buf, u32 buflen)
-{
-	return 0;
-}
+
 
 enum rf_path _get_path_from_ant_num(u8 antnum)
 {
@@ -1222,18 +1218,6 @@ enum rf_path _get_path_from_ant_num(u8 antnum)
 	return ret;
 }
 
-static void _hal_send_hal_init_hub_msg(struct rtw_phl_com_t *phl_com, u8 init_ok)
-{
-	struct phl_msg msg = {0};
-	u16 evt_id = (init_ok) ? MSG_EVT_HAL_INIT_OK : MSG_EVT_HAL_INIT_FAIL;
-
-	msg.inbuf = NULL;
-	msg.inlen = 0;
-	SET_MSG_MDL_ID_FIELD(msg.msg_id, PHL_MDL_PHY_MGNT);
-	SET_MSG_EVT_ID_FIELD(msg.msg_id, evt_id);
-	msg.band_idx = HW_BAND_0;
-	rtw_phl_msg_hub_hal_send(phl_com, NULL, &msg);
-}
 
 enum rtw_hal_status rtw_hal_preload(struct rtw_phl_com_t *phl_com, void *hal)
 {
