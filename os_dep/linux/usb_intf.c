@@ -106,6 +106,9 @@ static struct usb_device_id rtw_usb_id_tbl[] = {
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_DLINK, 0x0141, 0xff, 0xff, 0xff), .driver_info = RTL8852A},
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_DLINK, 0x3321, 0xff, 0xff, 0xff), .driver_info = RTL8852A},
 
+	/*=== D-Link DWA-F18 ====*/
+	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_DLINK, 0x3323, 0xff, 0xff, 0xff), .driver_info = RTL8852A},
+
         /*=== TP-Link AX1800 ===*/
 	{USB_DEVICE_AND_INTERFACE_INFO(0x35bc, 0x0100, 0xff, 0xff, 0xff), .driver_info = RTL8852A},
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_TPLINK, 0x013f, 0xff, 0xff, 0xff), .driver_info = RTL8852A},
